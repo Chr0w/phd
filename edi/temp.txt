@@ -1,0 +1,18 @@
+  "colors":[
+  { "greyscale_value":0, "color":"black", "type":"occupied", "bgr_value":[0, 0, 0] },
+  { "greyscale_value":1, "color":"white", "type":"free", "bgr_value":[255, 255, 255] },
+  { "greyscale_value":2, "color":"light_blue", "type":"unmapped_object", "bgr_value":[255, 240, 190] },
+  { "greyscale_value":3, "color":"dark_blue", "type":"missing_object", "bgr_value":[255, 100, 80] },
+  { "greyscale_value":4, "color":"red", "type":"laser_sample_point", "bgr_value":[0, 0, 220] },
+  { "greyscale_value":5, "color":"green", "type":"map_sample_point", "bgr_value":[0, 220, 0] }
+],
+
+
+{
+ "greyscale_values":[
+  { "0":[0, 0, 0]},
+  { "1":[255, 255, 255]}
+ ],
+
+
+"display_window_size":800

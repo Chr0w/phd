@@ -1,0 +1,48 @@
+{
+  "parameters": {
+    "display_window_size": 800,
+    "sample_resolution_degrees": 5
+  },
+  "color_map": {
+    "0": {
+      "BGR_value": [0, 0, 0],
+      "color_name": "black",
+      "type": "occupied"
+    },
+    "255": {
+      "BGR_value": [255, 255, 255],
+      "color_name": "white",
+      "type": "free"
+    },
+    "2": {
+      "BGR_value": [255, 240, 190],
+      "color_name": "light_blue",
+      "type": "unmapped_object"
+    },
+    "3": {
+      "BGR_value": [255, 100, 80],
+      "color_name": "dark_blue",
+      "type": "missing_object"
+    },
+    "4": {
+      "BGR_value": [0, 0, 220],
+      "color_name": "red",
+      "type": "laser_sample_point"
+    },
+    "5": {
+      "BGR_value": [0, 220, 0],
+      "color_name": "green",
+      "type": "map_sample_point"
+    },
+    "6": {
+      "BGR_value": [180, 255, 0],
+      "color_name": "teal",
+      "type": "sample_point"
+    }               
+  },
+  "additional_info": {
+    "source": "Generated data",
+    "usage": "Example for JSON structure"
+  }
+}
+
