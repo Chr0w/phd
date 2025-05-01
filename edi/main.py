@@ -4,13 +4,64 @@ import numpy as np
 from math import floor
 from statistics import mean
 import json
+import os
+from scipy.spatial import KDTree
+
+class sample_collection_pair:
+    def __init__(self, laser_sample_collection, map_sample_collection):
+        self.laser_sample_collection = laser_sample_collection
+        self.map_sample_collection = map_sample_collection
+
+    def add(self, laser_sample, map_sample):
+        self.laser_sample.add(laser_sample)
+        self.map_sample.add(map_sample)
+
+    def to_dict(self):
+        return {
+            'laser_sample': self.laser_sample.to_dict(),
+            'map_sample': self.map_sample.to_dict()
+        }
 
 
-class map_point:
-  def __init__(self, x, y, score=0):
-    self.x = x
-    self.y = y
-    self.score = score
+class sample_collection:
+    def __init__(self):
+        self.samples = []
+
+    def add(self, sample):
+        self.samples.append(sample)
+
+    def to_dict(self):
+        return [samp.__dict__ for samp in self.samples]
+
+class sample:
+    def __init__(self, origin=None):
+        self.origin = origin
+        self.score = 0
+        self.points = []
+
+    def add_point(self, point):
+        self.points.append(point)
+
+    def to_dict(self):
+        return {
+            'origin': self.origin.to_dict() if self.origin else None,
+            'score': self.score,
+            'points': [point.to_dict() for point in self.points]
+        }
+
+class point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def to_tuple(self):
+        return (self.x, self.y)
+
+    def to_dict(self):
+        return {
+            'x': self.x,
+            'y': self.y
+        }
 
 def euclidean_distance(point1, point2):
     return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
@@ -27,11 +78,11 @@ def nearest_neighbor_distances(list1, list2):
     return distances
 
 
-def color_nearest_pixels(image, points, color, radius=1, white_only=False):
+def color_nearest_pixels(image, sample_collection, color, radius=1, white_only=False):
 
     # Color the nearest pixels around each point
-    for point in points:
-        if point:
+    for sample in sample_collection.list:
+        for point in sample.list:
             for y in range(point.y - radius, point.y + radius + 1):
                 for x in range(point.x - radius, point.x + radius + 1):
                     # Check if the point is within the image bounds
@@ -50,11 +101,12 @@ def sample_visible_objects(image, points, detection_colors):
     height, width = image.shape
     
     # List to store the nearest non-white pixels
-    nearest_pixels = []
+    nearest_pixels = sample_collection()
     
     for p in points:
+        samp = sample(origin=p)
         # Iterate through 360 degrees
-        for angle in range(360):
+        for angle in range(0, 360, 5):
             radian = np.deg2rad(angle)
             
             # Iterate outward from the center point
@@ -69,12 +121,12 @@ def sample_visible_objects(image, points, detection_colors):
                     if image[y, x] in detection_colors:
                             x += round(np.random.normal(0,1))
                             y += round(np.random.normal(0,0.5))
-                            nearest_pixels.append(map_point(x=x, y=y))
+                            samp.add_point(point(x=x, y=y))
                             break
+        nearest_pixels.add(samp)
             
     
     return nearest_pixels
-
 
     
 
@@ -103,22 +155,21 @@ def get_pixel_colors(image):
 
     return pixel_colors
 
-def get_free_map_points(image, fraction):
+def get_free_points(image, fraction):
 
     # Get the dimensions of the image
     height, width = image.shape
 
-    # Create a list to store pixel colors
-    map_points = []
+    points = []
 
     # Iterate through each pixel
     for y in range(0, height, floor(height/fraction)):
         for x in range(0, width, floor(width/fraction)):
             # Get the color of the pixel (BGR format)
             if image[y, x] == 255:
-                map_points.append(map_point(x,y,0))
+                points.append(point(x,y))
 
-    return map_points
+    return points
 
 # Example usage
 
@@ -157,7 +208,7 @@ def remap(image):
 
 
 def load_image():
-    image = cv2.imread('/home/mircrda/phd_main/edi/test_maps/map_1.png', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('edi/test_maps/map_1.png', cv2.IMREAD_GRAYSCALE)
     if image is None:
         print('Could not open or find the image: ')
         exit(0)
@@ -165,7 +216,7 @@ def load_image():
 
 def load_config():
     # Open and read the JSON file
-    with open('config.json', 'r') as file:
+    with open('edi/config.json', 'r') as file:
         data = json.load(file)
     return data
 
@@ -195,96 +246,222 @@ def convert_to_bgr(image):
 def get_color_info(config, greyscale_value):
     return config["color_map"].get(str(greyscale_value), None)
 
-def get_sample_points(sample_positions, image, config):
 
-    #laser_points = []
+def load_json_file(file_path):
+    # Open and read the JSON file
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    
+    # Convert the JSON data to a Python object
+    sample_collection_obj = sample_collection()
+    for item in data:
+        samp = sample(origin=point(item['origin']['x'], item['origin']['y']))
+        samp.score = item['score']
+        for p in item['points']:
+            samp.add_point(point(x=p['x'], y=p['y']))
+        sample_collection_obj.add(samp)
+    return sample_collection_obj
 
-    #for p in sample_positions:
-        # print(f"robot pos: (", p.x, ",", p.y,")")
-    laser_points = sample_visible_objects(image, sample_positions, detection_colors=[0, 2]) 
 
-    return laser_points
 
+def load_data(laser_data_path, map_data_path, map):
+    if os.path.exists(laser_data_path):
+        laser_sample_collection = load_json_file(laser_data_path)
+    else:
+        laser_sample_collection = generate_laser_data(map)
+
+    if os.path.exists(map_data_path):
+        map_sample_collection = load_json_file(map_data_path)
+    else:
+        map_sample_collection = generate_map_data(map)
+
+    return laser_sample_collection, map_sample_collection
+
+
+
+
+def save_data(data, filename):
+    # Open and write the JSON file
+    with open(filename, 'w') as file:
+        json.dump(data.to_dict(), file, indent=4, default=lambda o: o.to_dict() if hasattr(o, 'to_dict') else o)
+
+
+def generate_laser_data(map):
+    sample_positions = get_free_points(image=map, fraction=5)
+    laser_sample = sample_visible_objects(map, sample_positions, detection_colors=[0, 2])
+
+    return laser_sample
+
+def generate_map_data(map):
+    sample_positions = get_free_points(image=map, fraction=5)
+    map_sample = sample_visible_objects(map, sample_positions, detection_colors=[0, 3])
+
+    return map_sample
+
+
+def color_point_radius(image, point, color):
+    cv2.circle(image, (point.x, point.y), 1, color, -1)
+    return image
+
+def create_point_list_from_sample_collection(sample_collection):
+    # Extract all points from a sample_collection
+    all_points = []
+    for sample in sample_collection.samples:
+        for p in sample.points:
+            all_points.append((p.x, p.y))
+    
+    return all_points
+
+
+def calculate_sample_score(sample, kd_tree):
+    """
+    Calculate the root mean square (RMS) distance from each point in the sample
+    to its nearest neighbor in the KDTree and set the sample's score.
+
+    Args:
+        sample (sample): The sample object containing points.
+        kd_tree (KDTree): The KDTree built from map_sample_collection points.
+    """
+    distances = []
+    for point in sample.points:
+        distance, _ = kd_tree.query(point.to_tuple())
+        distances.append(distance)
+    
+    # Calculate the RMS distance
+    if distances:
+        rms_distance = np.sqrt(np.mean(np.square(distances)))
+    else:
+        rms_distance = None  # Default to None if no points are present
+
+    return rms_distance
+
+
+import cv2
+import numpy as np
+
+def color_gaussian_circle(image, laser_sample_collection, radius, max_score):
+    """
+    Colors a Gaussian circle for each sample in the laser_sample_collection on the image.
+    The color is based on a heatmap that transitions from purple-blue (low values) to bright red (high values).
+
+    Args:
+        image (numpy.ndarray): The image to draw on.
+        laser_sample_collection (sample_collection): The collection of laser samples.
+        radius (int): The radius of the Gaussian circle.
+        max_score (float): The maximum score for normalization.
+    """
+    for sample in laser_sample_collection.samples:
+        # Normalize the score to a range of 0 to 1
+        normalized_score = sample.score / max_score if max_score > 0 else 0
+
+        # Convert normalized score to a heatmap color (purple-blue to red)
+        color = (
+            int(255 * (1 - normalized_score)),  # Blue channel
+            int(0),                             # Green channel
+            int(255 * normalized_score)         # Red channel
+        )
+
+        # Draw a Gaussian circle around the sample's origin
+        for y in range(-radius, radius + 1):
+            for x in range(-radius, radius + 1):
+                distance = np.sqrt(x**2 + y**2)
+                if distance <= radius:
+                    intensity = np.exp(-distance**2 / (2 * (radius / 2)**2))  # Gaussian falloff
+                    px = sample.origin.x + x
+                    py = sample.origin.y + y
+                    if 0 <= px < image.shape[1] and 0 <= py < image.shape[0]:
+                        # Blend the Gaussian intensity with the existing pixel color
+                        image[py, px] = (
+                            np.clip(int(image[py, px][0] * (1 - intensity) + color[0] * intensity), 0, 255),
+                            np.clip(int(image[py, px][1] * (1 - intensity) + color[1] * intensity), 0, 255),
+                            np.clip(int(image[py, px][2] * (1 - intensity) + color[2] * intensity), 0, 255)
+                        )
+    return image
 
 def main():
 
     conf = load_config()
     map = load_image()
-
-    sample_positions = get_free_map_points(image=map, fraction=5)
-
-    # Refactor to keep the two data sets coupled with the sampling position.
-    # Also, save the data so it can be loaded
-    laser_sample = sample_visible_objects(map, sample_positions, detection_colors=[0, 2])
-    map_sample = sample_visible_objects(map, sample_positions, detection_colors=[0, 3])
+    laser_sample_collection, map_sample_collection = load_data("edi/laser_sample.json", "edi/map_sample.json", map)
+    
 
 
-    map = color_nearest_pixels(map, sample_positions, 6)
-    map = color_nearest_pixels(map, laser_sample, 4)
-    map = color_nearest_pixels(map, map_sample, 5)
+    all_map_sample_points = create_point_list_from_sample_collection(map_sample_collection)
+    kd_tree = KDTree(all_map_sample_points)
 
-    display_image = get_display_image(map, conf)
+    scores = []
+    for sample in laser_sample_collection.samples:
+        sample.score = calculate_sample_score(sample, kd_tree) # Add score to sample
+        scores.append(sample.score) # Collect scores in a list
+
+    # Normalize the scores
+    normalized_scores = min_max_normalize(scores)
+
+
+    heat_map = convert_to_bgr(map)
+    
+    color_gaussian_circle(map, laser_sample_collection, radius=5, max_score=max(normalized_scores))
+
+
+    # 
+
+    # distance, index = kd_tree.query(p1.to_tuple())
+    # print(f"Nearest neighbor to {p1.to_tuple()} is {all_map_sample_points[index]} with distance {distance}")
+
+
+    #data = sample_collection_pair(laser_sample_collection, map_sample_collection)
+
+    # print(len(laser_sample_collection.samples))
+    # print(len(map_sample_collection.samples))
+
+    # for s in laser_sample_collection.samples:
+    #     calculate_score(s)
+
+
+
+
+    for s in laser_sample_collection.samples:
+        color_point_radius(map, s.origin, 6)
+
+    for s in map_sample_collection.samples:
+        for p in s.points:
+            color_point_radius(map, p, 5)
+
+    for s in laser_sample_collection.samples:
+        for p in s.points:
+            color_point_radius(map, p, 4)
+
+
+
+    #display_image = get_display_image(heat_map, conf)
 
     # Serializing json
-
-
     
-    # Writing to sample.json
-    with open("sample.json", "w") as outfile:
-        json.dump(map_sample, outfile)
 
+    # with open("sample.json", "w") as outfile:
+    #     json.dump(map_sample.to_dict(), outfile, indent=4) 
 
-    display_result(display_image, conf["parameters"]["display_window_size"])
+    save_data(laser_sample_collection, "laser_sample.json")
+    save_data(map_sample_collection, "map_sample.json")
+
+    display_result(heat_map, conf["parameters"]["display_window_size"])
 
     # -----------------------------------------------------------------------
     exit()
 
-    # Open an image file
-    image = cv2.imread('/home/mircrda/phd_main/edi/test_maps/map_1.png')
 
-    fraction = 25
-    fmp = map_point(140,128,0)
-    free_map_points = []
-    free_map_points.append(fmp)
-    # free_map_points = get_free_map_points(image, fraction=fraction)
-    scores = []
-
-    point_laser_origin = [150, 120] 
-    point_map_sample = [151, 120] 
-
-    for p in free_map_points:
-        m = [p.y +1, p.x]
-        l = [p.y, p.x]
-        
-        print(f"robot pos: (", p.x, ",", p.y,")")
-
-        laser_points = find_nearest_non_white_pixels(image, l, 0, detection_color=100)
-        map_sample_points = find_nearest_non_white_pixels(image, m, 0, detection_color=50)
-
-        laser_color = (255, 0, 0)  # Green color in RGB format
-        map_sample_color = (0, 252, 0)  # Green color in RGB format
-
-        image = color_nearest_pixels(image, laser_points, laser_color)
-        image = color_nearest_pixels(image, map_sample_points, map_sample_color)
-        image = color_nearest_pixels(image, [[140, 140]], (50, 50, 150), radius=5,white_only=True)
-
-        distances = nearest_neighbor_distances(laser_points, map_sample_points)
-        score = sum(distances)
-        scores.append(score)
+    # distances = nearest_neighbor_distances(laser_points, map_sample_points)
+    # score = sum(distances)
+    # scores.append(score)
 
     # normalized_scores = min_max_normalize(scores)
 
     # for i in range(len(normalized_scores)):
-    #     free_map_points[i].score = normalized_scores[i]
+    #     free_points[i].score = normalized_scores[i]
 
-    # for p in free_map_points:
+    # for p in free_points:
     #     # image[p.y, p.x] = [p.score, p.score, p.score]
     #     image = color_nearest_pixels(image, [[p.y, p.x]], (255, 255-(p.score*255), 0), radius=round(256/fraction), white_only=True)
-
-    display_size = 800
-    display_result(image, display_size)
-
-
 
 
 
