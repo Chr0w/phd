@@ -149,7 +149,7 @@ def min_max_normalize(data):
 
 
 def load_image():
-    image = cv2.imread('edi/test_maps/map_1.png', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('edi/test_maps/map_5_dispersed.png', cv2.IMREAD_GRAYSCALE)
     if image is None:
         print('Could not open or find the image: ')
         exit(0)
@@ -225,7 +225,6 @@ def load_data(laser_data_path, map_data_path, map):
         map_sample_collection = generate_map_data(map)
 
     return laser_sample_collection, map_sample_collection
-
 
 
 
@@ -411,14 +410,13 @@ def main():
         for p in sample.points:
             distances.append(p.dist_to_nearest_neighbor)
 
-    # print(len(distances))
-    # plt.hist(distances, bins=50, color='skyblue', edgecolor='black')
-    # plt.xlabel('Values')
-    # plt.ylabel('Frequency')
-    # plt.title('Basic Histogram')
-    # plt.show()
-    # Normalize the scores
+    plt.hist(distances, bins=256, color='skyblue', edgecolor='black', range=((0, 150)))
+    plt.xlabel('Values')
+    plt.ylabel('Frequency')
+    plt.title('Basic Histogram')
+    plt.show()
 
+    # Normalize the scores
     normalized_scores = min_max_normalize(scores)
     for i in range(len(scores)):
         laser_sample_collection.samples[i].score_normalized = normalized_scores [i]
