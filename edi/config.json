@@ -1,7 +1,8 @@
 {
   "parameters": {
     "display_window_size": 800,
-    "sample_resolution_degrees": 5
+    "sample_resolution_degrees": 5,
+    "noise_threshold_distance": 5
   },
   "color_map": {
     "0": {
