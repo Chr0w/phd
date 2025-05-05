@@ -7,6 +7,7 @@ import json
 import os
 from scipy.spatial import KDTree
 
+
 class sample_collection_pair:
     def __init__(self, laser_sample_collection, map_sample_collection):
         self.laser_sample_collection = laser_sample_collection
@@ -336,47 +337,45 @@ def calculate_sample_score(sample, kd_tree):
     return rms_distance
 
 
-import cv2
-import numpy as np
 
-def color_gaussian_circle(image, laser_sample_collection, radius, max_score):
-    """
-    Colors a Gaussian circle for each sample in the laser_sample_collection on the image.
-    The color is based on a heatmap that transitions from purple-blue (low values) to bright red (high values).
+# def color_gaussian_circle(image, laser_sample_collection, radius, max_score):
+#     """
+#     Colors a Gaussian circle for each sample in the laser_sample_collection on the image.
+#     The color is based on a heatmap that transitions from purple-blue (low values) to bright red (high values).
 
-    Args:
-        image (numpy.ndarray): The image to draw on.
-        laser_sample_collection (sample_collection): The collection of laser samples.
-        radius (int): The radius of the Gaussian circle.
-        max_score (float): The maximum score for normalization.
-    """
-    for sample in laser_sample_collection.samples:
-        # Normalize the score to a range of 0 to 1
-        normalized_score = sample.score / max_score if max_score > 0 else 0
+#     Args:
+#         image (numpy.ndarray): The image to draw on.
+#         laser_sample_collection (sample_collection): The collection of laser samples.
+#         radius (int): The radius of the Gaussian circle.
+#         max_score (float): The maximum score for normalization.
+#     """
+#     for sample in laser_sample_collection.samples:
+#         # Normalize the score to a range of 0 to 1
+#         normalized_score = sample.score / max_score if max_score > 0 else 0
 
-        # Convert normalized score to a heatmap color (purple-blue to red)
-        color = (
-            int(255 * (1 - normalized_score)),  # Blue channel
-            int(0),                             # Green channel
-            int(255 * normalized_score)         # Red channel
-        )
+#         # Convert normalized score to a heatmap color (purple-blue to red)
+#         color = (
+#             int(255 * (1 - normalized_score)),  # Blue channel
+#             int(0),                             # Green channel
+#             int(255 * normalized_score)         # Red channel
+#         )
 
-        # Draw a Gaussian circle around the sample's origin
-        for y in range(-radius, radius + 1):
-            for x in range(-radius, radius + 1):
-                distance = np.sqrt(x**2 + y**2)
-                if distance <= radius:
-                    intensity = np.exp(-distance**2 / (2 * (radius / 2)**2))  # Gaussian falloff
-                    px = sample.origin.x + x
-                    py = sample.origin.y + y
-                    if 0 <= px < image.shape[1] and 0 <= py < image.shape[0]:
-                        # Blend the Gaussian intensity with the existing pixel color
-                        image[py, px] = (
-                            np.clip(int(image[py, px][0] * (1 - intensity) + color[0] * intensity), 0, 255),
-                            np.clip(int(image[py, px][1] * (1 - intensity) + color[1] * intensity), 0, 255),
-                            np.clip(int(image[py, px][2] * (1 - intensity) + color[2] * intensity), 0, 255)
-                        )
-    return image
+#         # Draw a Gaussian circle around the sample's origin
+#         for y in range(-radius, radius + 1):
+#             for x in range(-radius, radius + 1):
+#                 distance = np.sqrt(x**2 + y**2)
+#                 if distance <= radius:
+#                     intensity = np.exp(-distance**2 / (2 * (radius / 2)**2))  # Gaussian falloff
+#                     px = sample.origin.x + x
+#                     py = sample.origin.y + y
+#                     if 0 <= px < image.shape[1] and 0 <= py < image.shape[0]:
+#                         # Blend the Gaussian intensity with the existing pixel color
+#                         image[py, px] = (
+#                             np.clip(int(image[py, px][0] * (1 - intensity) + color[0] * intensity), 0, 255),
+#                             np.clip(int(image[py, px][1] * (1 - intensity) + color[1] * intensity), 0, 255),
+#                             np.clip(int(image[py, px][2] * (1 - intensity) + color[2] * intensity), 0, 255)
+#                         )
+#     return image
 
 def main():
 
@@ -400,7 +399,7 @@ def main():
 
     heat_map = convert_to_bgr(map)
     
-    color_gaussian_circle(map, laser_sample_collection, radius=5, max_score=max(normalized_scores))
+    # color_gaussian_circle(map, laser_sample_collection, radius=5, max_score=max(normalized_scores))
 
 
     # 
