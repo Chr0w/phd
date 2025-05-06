@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 # Constants
-WINDOW_NAME = "Agent Movement"
+AGENT_WINDOW_NAME = "Agent Movement"
 CONTOUR_WINDOW_NAME = "Contour Map"
 MENU_WINDOW_NAME = "Map Selection"
 IMAGE_SIZE = 500
@@ -112,6 +112,21 @@ def create_contour_map(image):
 
     return contour_map
 
+def get_agent_position(game_map):
+
+    global agent_x, agent_y
+    # Update agent position based on movement flags
+    if move_up and is_white(game_map[agent_y - MOVE_SPEED, agent_x]):
+        agent_y = max(agent_y - MOVE_SPEED, AGENT_RADIUS)
+    if move_down and is_white(game_map[agent_y + MOVE_SPEED, agent_x]):
+        agent_y = min(agent_y + MOVE_SPEED, IMAGE_SIZE - AGENT_RADIUS)
+    if move_left and is_white(game_map[agent_y, agent_x - MOVE_SPEED]):
+        agent_x = max(agent_x - MOVE_SPEED, AGENT_RADIUS)
+    if move_right and is_white(game_map[agent_y, agent_x + MOVE_SPEED]):
+        agent_x = min(agent_x + MOVE_SPEED, IMAGE_SIZE - AGENT_RADIUS)
+
+    return agent_x, agent_y
+
 def main():
     # Load maps
     map_folder = "edi_v2/test_maps"
@@ -131,8 +146,14 @@ def main():
     agent_y = IMAGE_SIZE // 2
 
     # Create windows
-    cv2.namedWindow(WINDOW_NAME)
+    cv2.namedWindow(AGENT_WINDOW_NAME)
     cv2.namedWindow(CONTOUR_WINDOW_NAME)
+    cv2.namedWindow(MENU_WINDOW_NAME)
+
+    # Position the windows side by side
+    cv2.moveWindow(MENU_WINDOW_NAME, 0, 0)  # Position the Menu window to the right of Contour Map
+    cv2.moveWindow(CONTOUR_WINDOW_NAME, IMAGE_SIZE + 100, 0)  # Position the Contour Map window to the right
+    cv2.moveWindow(AGENT_WINDOW_NAME, 2 * (IMAGE_SIZE + 100), 0)  # Position the Agent Movement window at (0, 0)
 
     # Start listening to keyboard events
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
@@ -140,27 +161,20 @@ def main():
 
     while True:
         # Check if the windows are still open
-        if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1 or cv2.getWindowProperty(CONTOUR_WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+        if cv2.getWindowProperty(AGENT_WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1 or cv2.getWindowProperty(CONTOUR_WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
             break
+        
+        # Update agent position
+        agent_x, agent_y = get_agent_position(game_map)
 
         # Clear the image
         image = game_map.copy()
-
-        # Update agent position based on movement flags
-        if move_up and is_white(game_map[agent_y - MOVE_SPEED, agent_x]):
-            agent_y = max(agent_y - MOVE_SPEED, AGENT_RADIUS)
-        if move_down and is_white(game_map[agent_y + MOVE_SPEED, agent_x]):
-            agent_y = min(agent_y + MOVE_SPEED, IMAGE_SIZE - AGENT_RADIUS)
-        if move_left and is_white(game_map[agent_y, agent_x - MOVE_SPEED]):
-            agent_x = max(agent_x - MOVE_SPEED, AGENT_RADIUS)
-        if move_right and is_white(game_map[agent_y, agent_x + MOVE_SPEED]):
-            agent_x = min(agent_x + MOVE_SPEED, IMAGE_SIZE - AGENT_RADIUS)
 
         # Draw the agent
         cv2.circle(image, (agent_x, agent_y), AGENT_RADIUS, AGENT_COLOR, -1)
 
         # Display the images
-        cv2.imshow(WINDOW_NAME, image)
+        cv2.imshow(AGENT_WINDOW_NAME, image)
         cv2.imshow(CONTOUR_WINDOW_NAME, contour_map)
 
         # Exit on 'q' key
