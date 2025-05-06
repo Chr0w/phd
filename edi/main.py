@@ -7,7 +7,7 @@ import json
 import os
 from scipy.spatial import KDTree
 import matplotlib.pyplot as plt
-
+from pathlib import Path
 
 
 class sample_collection:
@@ -149,7 +149,7 @@ def min_max_normalize(data):
 
 
 def load_image():
-    image = cv2.imread('edi/test_maps/map_5_dispersed.png', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('edi/test_maps/map_7_no_boarder.png', cv2.IMREAD_GRAYSCALE)
     if image is None:
         print('Could not open or find the image: ')
         exit(0)
@@ -379,6 +379,7 @@ def calculate_score(sample, kd_tree):
 
 def main():
 
+    print("main")
     conf = load_config()
     map = load_image()
     laser_sample_collection, map_sample_collection = load_data("edi/data/laser_sample.json", "edi/data/map_sample.json", map)
@@ -410,11 +411,11 @@ def main():
         for p in sample.points:
             distances.append(p.dist_to_nearest_neighbor)
 
-    plt.hist(distances, bins=256, color='skyblue', edgecolor='black', range=((0, 150)))
-    plt.xlabel('Values')
-    plt.ylabel('Frequency')
-    plt.title('Basic Histogram')
-    plt.show()
+    # plt.hist(distances, bins=256, color='skyblue', edgecolor='black', range=((0, 150)))
+    # plt.xlabel('Values')
+    # plt.ylabel('Frequency')
+    # plt.title('Basic Histogram')
+    # plt.show()
 
     # Normalize the scores
     normalized_scores = min_max_normalize(scores)
