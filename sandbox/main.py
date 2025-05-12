@@ -1,4 +1,6 @@
 import math
+import time
+import numpy as np
 
 def min_max(x, list):
     max_val = max(list)
@@ -12,37 +14,45 @@ def min_max(x, list):
 
 def main():
 
-    w = [0.1, 0.15, 0.2, 0.3, 0.33, 0.4, 0.53, 0.6]
+    # arr = np.ones((1000000))
 
-    # w = [0.6]
-    # w = [0.6, 0.9]
-    # w = [0.5, 0.5]
-    # w = [0.75, 0.75]
-    # w = [0.1, 0.5]
+    # # Save timestamp
+    # start = time.time()
 
-    # Each step, add to w. Keep tabs on sum, min and max. 
-    # Loop through w, get normalized list. Keep tabs on the sum of this list.
-    # Loop through normalized list, get weights by dividing by sum of normals. 
+    # for i in arr:
+    #     i = i*2
 
-    w_normalized = []
+    # # Save timestamp
+    # end = time.time()
 
-    print(f"list: {w}")
-    print(f"list sum: {sum(w)}")
+    # print(end - start)
 
-    for i in w:
-        w_normalized.append(min_max(i, w))
+    # exit()
+    scores = [0.8, 0.8, 0.8, 0.8]
+    rep_frac = [0.1, 0.1, 0.1, 0.1]
 
-    su = sum(w_normalized)
-    print(f"normalzed list: {w_normalized}")
-    print(f"normalzed sum: {sum(w_normalized)}")
+    # scores = [0.9, 0.5, 0.2, 0.3, 0.68, 0.2, 0.95, 0.8]
+    # rep_frac = [0.1, 0.15, 0.2, 0.3, 0.13, 0.14, 0.23, 0.16]
 
-    w_normalized_div = []
-    
-    for i in w_normalized:
-        w_normalized_div.append(i/su)
+    print(f"scores: {scores}")
+    print(f"rep_frac: {rep_frac}")
 
-    print(f"normalzed div list: {w_normalized_div}")
-    print(f"normalzed div sum: {sum(w_normalized_div)}")
+    rep_frac_sum = sum(rep_frac)
+
+    rep_frac_normalized = []
+    for r in rep_frac:
+        rep_frac_normalized.append(r/rep_frac_sum)
+    print(f"rep_frac_normalized: {rep_frac_normalized}")
+
+    site_score = 0
+
+    for i in range(len(scores)):
+        s = scores[i]*(rep_frac[i]/rep_frac_sum)
+        site_score += s
+        print(f"individually wighted score: {s}")
+
+    print(f"site_score (weighted sum): {site_score}")
+
 
 if __name__ == "__main__":
     main()
