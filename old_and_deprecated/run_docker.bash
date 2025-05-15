@@ -13,8 +13,11 @@ docker run -it \
     --env="DISPLAY=$DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    -v "/dev/shm:/dev/shm:rw" \
     --env="XAUTHORITY=$XAUTH" \
     --net=host \
+    --ipc=host \
+    --pid=host \
     --privileged \
     $1 \
     bash
