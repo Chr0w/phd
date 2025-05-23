@@ -78,7 +78,7 @@ class point:
         return f"{self.x},{self.y}"
 
 
-def sample_visible_objects(image, position, detection_colors, missing_color, angle_step=10):
+def sample_visible_objects(image, position, detection_colors, missing_color, angle_step=36):
     """
     Sample visible objects in the image from the given position.
     Uses a more efficient approach with reduced angular steps and early stopping.
@@ -357,7 +357,7 @@ def main():
         "mapped": MAPPED_COLOR,
         "unmapped": UNMAPPED_COLOR,
     }  
-        scan, missing_points = sample_visible_objects(contour_map, point(agent_x, agent_y), detection_colors=detection_colors, missing_color=MISSING_COLOR, angle_step=3)
+        scan, missing_points = sample_visible_objects(contour_map, point(agent_x, agent_y), detection_colors=detection_colors, missing_color=MISSING_COLOR, angle_step=5)
 
         for p in missing_points:
             cv2.rectangle(contour_map, (p.x, p.y), (min(p.x+1, img_width-1), min(p.y+1, img_height-1)), HIGHLIGHT_COLOR, 2)
@@ -379,8 +379,8 @@ def main():
         counted_colors = count_pixels_by_color(contour_map, counted_colors)
 
         # Display the images
-        # image = cv2.resize(image, (1000, 1000))
-        # contour_map = cv2.resize(contour_map, (1000, 1000))
+        image = cv2.resize(image, (1000, 1000))
+        contour_map = cv2.resize(contour_map, (1000, 1000))
 
         cv2.imshow(AGENT_WINDOW_NAME, image)
         cv2.imshow(CONTOUR_WINDOW_NAME, contour_map)
