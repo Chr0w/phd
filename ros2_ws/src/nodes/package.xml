@@ -8,7 +8,7 @@
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>rclcpp</depend>
+  <depend>rclcpp</depend> # Ros Client Library for C++ (API for interacting with ROS 2)
   <depend>std_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
