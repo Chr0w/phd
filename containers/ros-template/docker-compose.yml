@@ -9,8 +9,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: always
-    #network_mode: "host"
-    #ipc: host
+    network_mode: "host"
+    ipc: host
     pid: host
     environment:
       - UID=${HOST_UID}

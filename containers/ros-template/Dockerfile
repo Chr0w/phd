@@ -1,13 +1,20 @@
-FROM ros:humble-ros-core
-
+#FROM ros:humble-ros-core
+FROM ros:jazzy-ros-base 
 # Install packages and dependencies
+
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    #python3-pip \
     build-essential \
-    python3-colcon-common-extensions \
+    #git \
+    python3-colcon-common-extensions \ 
     && rm -rf /var/lib/apt/lists/*
+
 
 # Copy entrypoint script (which creates ros user with same uid/gid as host user)
 COPY ros_entrypoint.sh /ros_entrypoint.sh
+
+#ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 WORKDIR /colcon_ws
 
