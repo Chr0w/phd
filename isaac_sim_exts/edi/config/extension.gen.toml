@@ -1,0 +1,14 @@
+
+[package]
+    trusted = 0
+    archiveSubdir = "my-first-extension-1.0.0/exts/maticodes.project.first"
+    archivePath = "https://github.com/mati-nvidia/my-first-extension/archive/refs/tags/v1.0.0.zip"
+    repository = "https://github.com/mati-nvidia/my-first-extension/tree/v1.0.0"
+    githubRelease = "https://github.com/mati-nvidia/my-first-extension/releases/tag/v1.0.0"
+
+    [package.authors]
+        0 = "https://github.com/mati-nvidia"
+
+    [package.publish]
+        date = 1686492191
+        buildNumber = "Release 1.0.0"
