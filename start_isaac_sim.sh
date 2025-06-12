@@ -3,7 +3,7 @@
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 export isaac_sim_package_path=$HOME/isaacsim
 #export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
 
 # Can only be set once per terminal.
 # Setting this command multiple times will append the internal library path again potentially leading to conflicts
