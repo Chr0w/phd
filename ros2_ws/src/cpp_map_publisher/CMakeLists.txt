@@ -16,12 +16,12 @@ find_package(nav_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 
 
-add_executable(map_pub_node src/map_pub_node.cpp)
-ament_target_dependencies(map_pub_node rclcpp std_msgs nav_msgs OpenCV)
+add_executable(map_publisher src/map_pub_node.cpp)
+ament_target_dependencies(map_publisher rclcpp std_msgs nav_msgs OpenCV)
 
 # So ROS can find the executables
 install(TARGETS
-  map_pub_node
+  map_publisher
   DESTINATION lib/${PROJECT_NAME})
   
 if(BUILD_TESTING)
