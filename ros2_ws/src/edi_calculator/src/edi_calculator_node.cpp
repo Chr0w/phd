@@ -4,6 +4,9 @@
 #include <iostream>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 
 class EdiCalculatorNode : public rclcpp::Node
 {
@@ -11,10 +14,17 @@ public:
     EdiCalculatorNode()
     : Node("edi_calculator_node")
     {
-        subscription_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+        tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+        map_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
             "og_map", 10,
             std::bind(&EdiCalculatorNode::map_callback, this, std::placeholders::_1)
         );
+        // pose_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+        //     "og_map", 10,
+        //     std::bind(&EdiCalculatorNode::map_callback, this, std::placeholders::_1)
+        // );        
         pointcloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("expected_hits", 10);
         RCLCPP_INFO(this->get_logger(), "edi_calculator_node started, waiting for maps...");
     }
@@ -25,13 +35,29 @@ private:
         RCLCPP_INFO(this->get_logger(), "Received OccupancyGrid: %d x %d",
         msg->info.width, msg->info.height);
         std::cout << hello_world() << std::endl; // Call the function from image_utils
+     
+        geometry_msgs::msg::TransformStamped transform;
+        try {
+            transform = tf_buffer_->lookupTransform(
+                "map", "sim_lidar", tf2::TimePointZero);
+        } catch (const tf2::TransformException & ex) {
+            RCLCPP_WARN(this->get_logger(), "Could not transform map->sim_lidar: %s", ex.what());
+            return;
+        }
+
+        // Convert robot position from world to map pixel coordinates
+        double map_x = (transform.transform.translation.x - msg->info.origin.position.x) / msg->info.resolution;
+        double map_y = (transform.transform.translation.y - msg->info.origin.position.y) / msg->info.resolution;
+        cv::Point robot_pos(static_cast<int>(map_x), static_cast<int>(map_y));
+     
+        std::cout << "robot_pos: (" << robot_pos.x << ", " << robot_pos.y << ")" << std::endl;
+
         auto image = occupancyGridToMat(*msg);
 
         // cv::imshow("Image with Line", image);
         // cv::waitKey(0); // Wait for a key press
 
-        auto expected_hits = simulateLidarMask(image, 
-            cv::Point(image.cols / 2, image.rows / 2), 360, 500);
+        auto expected_hits = simulateLidarMask(image,robot_pos, 360, 500);
         std::cout << "Expected hits: " << expected_hits.size() << std::endl;
 
         // for (size_t i = 0; i < std::min<size_t>(expected_hits.size(), 10); ++i) {
@@ -100,8 +126,10 @@ private:
         return cloud_msg;
     }
 
-    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr subscription_;
+    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub_;
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 int main(int argc, char * argv[])
