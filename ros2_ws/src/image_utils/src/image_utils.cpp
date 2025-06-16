@@ -23,11 +23,11 @@ std::vector<cv::Point> simulateLidarMask(
         ray_ends[i] = end;
     }
 
-    //  cv::imshow("rays_mask", rays_mask);
+    // cv::imshow("rays_mask", rays_mask);
 
     // 2. Find where rays hit obstacles
     cv::Mat obstacle_mask;
-    cv::threshold(map, obstacle_mask, 127, 255, cv::THRESH_BINARY_INV); // obstacles = 255
+    cv::threshold(map, obstacle_mask, 127, 255, cv::THRESH_BINARY); // obstacles = 255
 
     // cv::imshow("obstacle_mask", obstacle_mask);
 
@@ -40,12 +40,17 @@ std::vector<cv::Point> simulateLidarMask(
     std::vector<cv::Point> hits;
     for (int i = 0; i < n_beams; ++i) {
         cv::LineIterator it(intersection_mask, robot_pos, ray_ends[i]);
+        bool found = false;
         for (int j = 0; j < it.count; ++j, ++it) {
             if (intersection_mask.at<uchar>(it.pos()) > 0) {
                 hits.push_back(it.pos());
+                found = true;
                 break;
             }
         }
+        // if (!found) {
+        //     hits.push_back(ray_ends[i]);
+        // }
     }
     return hits;
 }

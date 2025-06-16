@@ -49,18 +49,18 @@ std::vector<cv::Point> simulateLidarMask(
         ray_ends[i] = end;
     }
 
-    //  cv::imshow("rays_mask", rays_mask);
+    cv::imshow("rays_mask", rays_mask);
 
     // 2. Find where rays hit obstacles
     cv::Mat obstacle_mask;
     cv::threshold(map, obstacle_mask, 127, 255, cv::THRESH_BINARY_INV); // obstacles = 255
 
-    // cv::imshow("obstacle_mask", obstacle_mask);
+    cv::imshow("obstacle_mask", obstacle_mask);
 
     cv::Mat intersection_mask;
     cv::bitwise_and(rays_mask, obstacle_mask, intersection_mask);
 
-    // cv::imshow("intersection_mask", intersection_mask);
+    cv::imshow("intersection_mask", intersection_mask);
 
     // 3. For each ray, walk along the line and find the first intersection
     std::vector<cv::Point> hits;

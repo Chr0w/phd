@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(image_utils REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -26,7 +27,7 @@ endif()
 find_package(OpenCV REQUIRED)  # Make sure this is present
 
 add_executable(edi_calculator_node src/edi_calculator_node.cpp)
-ament_target_dependencies(edi_calculator_node rclcpp nav_msgs image_utils)
+ament_target_dependencies(edi_calculator_node rclcpp nav_msgs image_utils sensor_msgs)
 target_link_libraries(edi_calculator_node ${OpenCV_LIBS})
 
 install(TARGETS edi_calculator_node DESTINATION lib/${PROJECT_NAME})
