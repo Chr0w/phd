@@ -20,7 +20,7 @@ class OccupancyGrid_Publisher : public rclcpp::Node
     {
       map = loaded_map;
       og_pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>("og_map", 10);
-      og_timer = this->create_wall_timer(500ms, std::bind(&OccupancyGrid_Publisher::og_callback, this));
+      og_timer = this->create_wall_timer(1000ms, std::bind(&OccupancyGrid_Publisher::og_callback, this));
     }
   private:
 
@@ -49,6 +49,7 @@ class OccupancyGrid_Publisher : public rclcpp::Node
       // occupancy_grid_msg.data = {100, 0, 0, 0, 0, 0, 0, 0, 0};
 
       og_pub->publish(occupancy_grid_msg);
+      std::cout << "Published occupancy grid" << std::endl; 
     }
 
 
