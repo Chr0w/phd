@@ -15,9 +15,22 @@ using namespace std::chrono_literals;
 class OccupancyGrid_Publisher : public rclcpp::Node
 {
   public:
-    OccupancyGrid_Publisher(cv::Mat loaded_map)
-    : Node("occupancy_grid_publisher")
+    OccupancyGrid_Publisher()
+    : Node("map_publisher")
     {
+      std::string map_image_path; // = "/home/mircrda/phd/ros2_ws/m1.png";
+      this->declare_parameter("map_image", "");
+      this->get_parameter("map_image", map_image_path);
+
+      RCLCPP_INFO(this->get_logger(), "Trying to load map image: %s", map_image_path.c_str());
+      // std::cout <<  << map_image_path << std::endl;
+      auto loaded_map = cv::imread(map_image_path, cv::IMREAD_GRAYSCALE);
+      if (loaded_map.empty()) {
+          RCLCPP_ERROR(this->get_logger(), "Error: Could not load the map image.");
+          rclcpp::shutdown();
+          return;
+      }
+
       map = loaded_map;
       og_pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>("og_map", 10);
       og_timer = this->create_wall_timer(1000ms, std::bind(&OccupancyGrid_Publisher::og_callback, this));
@@ -50,6 +63,8 @@ class OccupancyGrid_Publisher : public rclcpp::Node
 
       og_pub->publish(occupancy_grid_msg);
       std::cout << "Published occupancy grid" << std::endl; 
+      RCLCPP_INFO(this->get_logger(), "Published occupancy grid");
+
     }
 
 
@@ -60,15 +75,10 @@ class OccupancyGrid_Publisher : public rclcpp::Node
 
 int main(int argc, char * argv[])
 {
-  auto loaded_map = cv::imread("m1.png", cv::IMREAD_GRAYSCALE);
-  if (loaded_map.empty()) {
-    std::cerr << "Error: Could not load the map image." << std::endl;
-    return -1;
-  }
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<OccupancyGrid_Publisher>(loaded_map));
-  rclcpp::shutdown();
-  return 0;
+    rclcpp::init(argc, argv);
+    rclcpp::spin(std::make_shared<OccupancyGrid_Publisher>());
+    rclcpp::shutdown();
+    return 0;
 }
 
 

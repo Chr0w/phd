@@ -1,4 +1,5 @@
 src/log/
+ros2_ws/log/
 build/
 install/
 
