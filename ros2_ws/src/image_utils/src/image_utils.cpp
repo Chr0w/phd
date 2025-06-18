@@ -40,11 +40,9 @@ std::vector<cv::Point> simulateLidarMask(
     std::vector<cv::Point> hits;
     for (int i = 0; i < n_beams; ++i) {
         cv::LineIterator it(intersection_mask, robot_pos, ray_ends[i]);
-        bool found = false;
         for (int j = 0; j < it.count; ++j, ++it) {
             if (intersection_mask.at<uchar>(it.pos()) > 0) {
                 hits.push_back(it.pos());
-                found = true;
                 break;
             }
         }

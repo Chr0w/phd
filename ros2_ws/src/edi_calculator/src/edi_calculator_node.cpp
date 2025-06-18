@@ -7,6 +7,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp> // Include LaserScan message
 
 class EdiCalculatorNode : public rclcpp::Node
 {
@@ -21,21 +22,21 @@ public:
             "og_map", 10,
             std::bind(&EdiCalculatorNode::map_callback, this, std::placeholders::_1)
         );
-        // pose_subscriber_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-        //     "og_map", 10,
-        //     std::bind(&EdiCalculatorNode::map_callback, this, std::placeholders::_1)
-        // );        
+
+        laserscan_subscriber_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+            "scan", 10,
+            std::bind(&EdiCalculatorNode::laserscan_callback, this, std::placeholders::_1)
+        );
+
         pointcloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("expected_hits", 10);
-        RCLCPP_INFO(this->get_logger(), "edi_calculator_node started, waiting for maps...");
+        RCLCPP_INFO(this->get_logger(), "edi_calculator_node started, waiting for maps and LaserScan...");
     }
 
 private:
     void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     {
         RCLCPP_INFO(this->get_logger(), "Received OccupancyGrid: %d x %d",
-        msg->info.width, msg->info.height);
-        std::cout << hello_world() << std::endl; // Call the function from image_utils
-     
+        msg->info.width, msg->info.height);  
         geometry_msgs::msg::TransformStamped transform;
         try {
             transform = tf_buffer_->lookupTransform(
@@ -68,6 +69,12 @@ private:
         pointcloud_pub_->publish(pc2_msg);
 
 
+    }
+
+    void laserscan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+    {
+        RCLCPP_INFO(this->get_logger(), "Received LaserScan with %zu ranges", msg->ranges.size());
+        // Process LaserScan data here if needed
     }
 
     cv::Mat occupancyGridToMat(const nav_msgs::msg::OccupancyGrid& grid) {
@@ -127,6 +134,7 @@ private:
     }
 
     rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laserscan_subscriber_; // Add LaserScan subscriber
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
