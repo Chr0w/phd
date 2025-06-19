@@ -5,6 +5,7 @@ export _colcon_cd_root=~/ros2_ws
 
 # ----- Git -----
 alias gs='git status'
+alias pull_submodules='git submodule update --recursive --remote'
 
 function git_upload() {
    echo "Adding, commiting and pushing all changes"
