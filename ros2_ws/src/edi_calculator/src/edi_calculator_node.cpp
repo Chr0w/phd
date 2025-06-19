@@ -7,7 +7,7 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <sensor_msgs/msg/laser_scan.hpp> // Include LaserScan message
+#include <sensor_msgs/msg/laser_scan.hpp>
 
 class EdiCalculatorNode : public rclcpp::Node
 {
@@ -35,8 +35,14 @@ public:
 private:
     void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Received OccupancyGrid: %d x %d",
+        RCLCPP_DEBUG(this->get_logger(), "Received OccupancyGrid: %d x %d",
         msg->info.width, msg->info.height);  
+
+        if (!occupancy_grid_equal_ignore_stamp(*msg, current_map_)) {
+            current_map_ = *msg;
+            RCLCPP_INFO(this->get_logger(), "New map received, updating current map.");
+            }
+
         geometry_msgs::msg::TransformStamped transform;
         try {
             transform = tf_buffer_->lookupTransform(
@@ -133,12 +139,40 @@ private:
         return cloud_msg;
     }
 
+    bool occupancy_grid_equal_ignore_stamp(
+    const nav_msgs::msg::OccupancyGrid& a,
+    const nav_msgs::msg::OccupancyGrid& b)
+    {
+        // Compare all header fields except stamp
+        if (a.header.frame_id != b.header.frame_id) return false;
+
+        // Compare info fields
+        if (a.info.width != b.info.width) return false;
+        if (a.info.height != b.info.height) return false;
+        if (a.info.resolution != b.info.resolution) return false;
+        if (a.info.origin.position.x != b.info.origin.position.x) return false;
+        if (a.info.origin.position.y != b.info.origin.position.y) return false;
+        if (a.info.origin.position.z != b.info.origin.position.z) return false;
+        if (a.info.origin.orientation.x != b.info.origin.orientation.x) return false;
+        if (a.info.origin.orientation.y != b.info.origin.orientation.y) return false;
+        if (a.info.origin.orientation.z != b.info.origin.orientation.z) return false;
+        if (a.info.origin.orientation.w != b.info.origin.orientation.w) return false;
+
+        // Compare map data
+        if (a.data != b.data) return false;
+
+        return true;
+    }
+
     rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_subscriber_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laserscan_subscriber_; // Add LaserScan subscriber
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub_;
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+    nav_msgs::msg::OccupancyGrid current_map_;
 };
+
+
 
 int main(int argc, char * argv[])
 {
