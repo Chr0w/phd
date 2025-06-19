@@ -1,0 +1,3 @@
+[submodule "humble-docker"]
+	path = humble-docker
+	url = git@github.com:Chr0w/humble-docker.git
