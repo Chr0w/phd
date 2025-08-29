@@ -10,6 +10,14 @@
 # Note: checkout the required tutorials at https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/overview.html
 
 
+import sys
+import os
+
+# Add the current directory to Python path to find local modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 from pxr import UsdPhysics, PhysxSchema, Gf, PhysicsSchemaTools, UsdGeom
 import omni
 from omni.isaac.core import SimulationContext
@@ -23,6 +31,7 @@ import omni.graph.core as og
 from isaacsim.core.prims import SingleRigidPrim
 from isaacsim.core.api.robots import Robot
 from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
+from robot_logger import RobotLogger
 
 # To link this repo with isaac sim:
 # cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive
@@ -34,6 +43,9 @@ class ESI(BaseSample):
 
         self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/mockbot_2_for_import.usd"
         self._import_map_usd_path = "/home/chrdam/isaac_sim_files/map_1_for_import.usd"
+
+        # Initialize robot logger
+        self._robot_logger = RobotLogger(log_interval=0.1, stop_logging_time=15.0)
 
         return
 
@@ -48,7 +60,7 @@ class ESI(BaseSample):
         )
 
     def set_camera_view(self):
-        set_camera_view(eye=[30.0, 30, 30], target=[0.00, 0.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
+        set_camera_view(eye=[-25.0, -35, 30], target=[0.00, 0.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
 
     def setup_scene(self):
         self.create_dome_light()
@@ -70,9 +82,19 @@ class ESI(BaseSample):
 
     def print_cube_info(self):
         position, orientation = self._robot.get_world_pose()
-        print(f"Cube Position: {position}")
-        print(f"Sim time: {self._simulation_context.current_time}")
-        print("---------")
+        current_time = self._simulation_context.current_time
+        
+        # print(f"Robot Position: {position}")
+        # print(f"Sim time: {current_time}")
+        # print("---------")
+        
+        # Log robot pose data
+        try:
+            logging_stopped = self._robot_logger.log_robot_pose(current_time, position, orientation)
+            if logging_stopped:
+                print("Logging has been stopped and CSV file saved!")
+        except Exception as e:
+            print(f"Error in logging: {e}")
 
 
     def custom_simulation_step(self, step_size):
