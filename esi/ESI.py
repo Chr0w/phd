@@ -41,7 +41,7 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
-        self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/mockbot_2_for_import.usd"
+        self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/float_bot_1.usd"
         self._import_map_usd_path = "/home/chrdam/isaac_sim_files/map_1_for_import.usd"
 
         # Initialize robot logger
@@ -66,8 +66,8 @@ class ESI(BaseSample):
         self.create_dome_light()
         world = self.get_world()
         add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
-        add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/mockbot_2")
-        self._robot = self._world.scene.add(Robot(prim_path="/mockbot_2", name="mockbot_2"))
+        add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
+        self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
 
         return
 
@@ -145,12 +145,12 @@ class ESI(BaseSample):
 
     async def setup_post_load(self):
         self._world = self.get_world()
-        self._robot = self._world.scene.get_object("mockbot_2")
+        self._robot = self._world.scene.get_object("float_bot")
         # self._robot.set_world_pose(np.array([-10.0, 10.0, 0.2]), np.array([0.0, 0.0, 0.0, 1.0]))
         # self._robot.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
 
         self.set_camera_view()
-        # await self.disable_gravity()
+        await self.disable_gravity()
 
         self._simulation_context = SimulationContext()
 
