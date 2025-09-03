@@ -41,7 +41,7 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
-        self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/float_bot_1.usd"
+        self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/float_bot_2.usd"
         self._import_map_usd_path = "/home/chrdam/isaac_sim_files/map_1_for_import.usd"
 
         # Initialize robot logger
@@ -104,13 +104,47 @@ class ESI(BaseSample):
         # Format: (time_threshold, linear_velocity, angular_velocity)
         # linear_velocity: [forward, left, up] in robot's frame
         # angular_velocity: [roll, pitch, yaw] in robot's frame
+
+        speed_scalar = 0.5
+
+        cmd_1 = (0, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))
+        cmd_2 = (4, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_3 = (6, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        cmd_4 = (12, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_5 = (14, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        cmd_6 = (20, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_7 = (22, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        cmd_8 = (26, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_9 = (28, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))   
+        cmd_10 = (35, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_11 = (37, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        cmd_12 = (41, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_13 = (43, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        cmd_14 = (46, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_15 = (48, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        cmd_16 = (50, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        cmd_17 = (53, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))     
+        stop = (55, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))         
+
         velocity_schedule = [
-            (0.0, np.array([1.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0])),   # Move forward, no rotation
-            (3.0, np.array([0.5, 0.0, 0.0]), np.array([0.0, 0.0, 0.5])),   # Move forward slowly while turning left
-            (6.0, np.array([1.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0])),   # Move forward, no rotation
-            (9.0, np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, -0.5])),  # Stop moving, turn right
-            (12.0, np.array([2.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0])),  # Move forward fast, no rotation
-            (15.0, np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0])),  # Stop everything
+            cmd_1,
+            cmd_2,  
+            cmd_3,
+            cmd_4,
+            cmd_5,
+            cmd_6,
+            cmd_7,
+            cmd_8,
+            cmd_9,
+            cmd_10,
+            cmd_11,
+            cmd_12,
+            cmd_13,
+            cmd_14,
+            cmd_15,
+            cmd_16,
+            cmd_17,
+            stop
         ]
         
         # Find the appropriate velocities based on current time
