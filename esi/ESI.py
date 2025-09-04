@@ -41,8 +41,9 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
-        self._import_robot_usd_path = "/home/chrdam/isaac_sim_files/float_bot_2.usd"
-        self._import_map_usd_path = "/home/chrdam/isaac_sim_files/map_1_for_import.usd"
+        USER = os.environ.get("USER")
+        self._import_robot_usd_path = f"/home/{USER}/isaac_sim_files/float_bot_2.usd"
+        self._import_map_usd_path = f"/home/{USER}/isaac_sim_files/map_1_for_import.usd"
 
         # Initialize robot logger
         self._robot_logger = RobotLogger(log_interval=0.1, stop_logging_time=15.0)
@@ -105,7 +106,7 @@ class ESI(BaseSample):
         # linear_velocity: [forward, left, up] in robot's frame
         # angular_velocity: [roll, pitch, yaw] in robot's frame
 
-        speed_scalar = 0.5
+        speed_scalar = 1
 
         cmd_1 = (0, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))
         cmd_2 = (4, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
