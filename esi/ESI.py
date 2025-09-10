@@ -38,6 +38,12 @@ from robot_logger import RobotLogger
 # ln -s /home/${USER}/phd/esi/ user_examples
 
 class ESI(BaseSample):
+
+    def register_sim_step_callback(self):
+        print("Registering sim step callback")
+        self._world.add_physics_callback("sim_step", callback_fn=self.custom_simulation_step)
+
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -46,7 +52,7 @@ class ESI(BaseSample):
         self._import_map_usd_path = f"/home/{USER}/isaac_sim_files/map_1_for_import.usd"
 
         # Initialize robot logger
-        self._robot_logger = RobotLogger(log_interval=0.1, stop_logging_time=15.0)
+        # self._robot_logger = RobotLogger(log_interval=0.1, stop_logging_time=15.0)
 
         return
 
@@ -85,17 +91,14 @@ class ESI(BaseSample):
         position, orientation = self._robot.get_world_pose()
         current_time = self._simulation_context.current_time
         
-        # print(f"Robot Position: {position}")
-        # print(f"Sim time: {current_time}")
-        # print("---------")
         
         # Log robot pose data
-        try:
-            logging_stopped = self._robot_logger.log_robot_pose(current_time, position, orientation)
-            if logging_stopped:
-                print("Logging has been stopped and CSV file saved!")
-        except Exception as e:
-            print(f"Error in logging: {e}")
+        # try:
+        #     logging_stopped = self._robot_logger.log_robot_pose(current_time, position, orientation)
+        #     if logging_stopped:
+        #         print("Logging has been stopped and CSV file saved!")
+        # except Exception as e:
+        #     print(f"Error in logging: {e}")
 
 
     def custom_simulation_step(self, step_size):
@@ -175,7 +178,7 @@ class ESI(BaseSample):
         self._robot.set_linear_velocity(current_linear_velocity_world)
         self._robot.set_angular_velocity(current_angular_velocity_world)
 
-        self.print_cube_info()
+        # self.print_cube_info()
 
 
     async def setup_post_load(self):
@@ -189,9 +192,7 @@ class ESI(BaseSample):
 
         self._simulation_context = SimulationContext()
 
-        # Declare callbacks
-        self._world.add_physics_callback("sim_step", callback_fn=self.custom_simulation_step)
-
+        self.register_sim_step_callback()
         return
 
 
@@ -199,9 +200,13 @@ class ESI(BaseSample):
 
 
     async def setup_pre_reset(self):
+        print("Pre Reset")
         return
 
     async def setup_post_reset(self):
+        self._world = self.get_world()
+        self.register_sim_step_callback()
+        print("Post Reset")
         return
 
     def world_cleanup(self):
