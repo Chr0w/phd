@@ -10,9 +10,12 @@
 import os
 
 import omni.ext
+import omni.ui as ui
+import asyncio
 from isaacsim.examples.browser import get_instance as get_browser_instance
 from isaacsim.examples.interactive.base_sample import BaseSampleUITemplate
 from isaacsim.examples.interactive.user_examples import ESI
+from isaacsim.gui.components.ui_utils import btn_builder
 
 
 class EsiExtension(omni.ext.IExt):
@@ -29,7 +32,8 @@ class EsiExtension(omni.ext.IExt):
             "sample": ESI(),
         }
 
-        ui_handle = BaseSampleUITemplate(**ui_kwargs)
+
+        ui_handle = EsiExtensionUI(**ui_kwargs)
 
         # register the example with examples browser
         get_browser_instance().register_example(
@@ -45,3 +49,57 @@ class EsiExtension(omni.ext.IExt):
         get_browser_instance().deregister_example(name=self.example_name, category=self.category)
 
         return
+
+class EsiExtensionUI(BaseSampleUITemplate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def build_extra_frames(self):
+        extra_stacks = self.get_extra_frames_handle()
+        self.task_ui_elements = {}
+
+        with extra_stacks:
+            with ui.CollapsableFrame(
+                title="Task Control",
+                width=ui.Fraction(0.33),
+                height=0,
+                visible=True,
+                collapsed=False,
+                # style=get_style(),
+                horizontal_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_AS_NEEDED,
+                vertical_scrollbar_policy=ui.ScrollBarPolicy.SCROLLBAR_ALWAYS_ON,
+            ):
+                self.build_task_controls_ui()
+
+    def _on_add_tiles_event(self):
+        print("Spawn floor tiles button pressed")
+        asyncio.ensure_future(self.sample._on_add_tiles_event_async())
+        self.task_ui_elements["Add floor tiles"].enabled = False
+        return
+
+    def post_reset_button_event(self):
+        self.task_ui_elements["Add floor tiles"].enabled = True
+        return
+
+    def post_load_button_event(self):
+        self.task_ui_elements["Add floor tiles"].enabled = True
+        return
+
+    def post_clear_button_event(self):
+        # World needs to be loaded before tiles can be added
+        self.task_ui_elements["Add floor tiles"].enabled = True
+        return
+
+    def build_task_controls_ui(self):
+        with ui.VStack(spacing=5):
+
+            dict = {
+                "label": "Add tiles",
+                "type": "button",
+                "text": "Spawn floor tiles",
+                "tooltip": "1m² floor tiles",
+                "on_clicked_fn": self._on_add_tiles_event,
+            }
+
+            self.task_ui_elements["Add floor tiles"] = btn_builder(**dict)
+            self.task_ui_elements["Add floor tiles"].enabled = False

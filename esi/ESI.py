@@ -184,8 +184,6 @@ class ESI(BaseSample):
     async def setup_post_load(self):
         self._world = self.get_world()
         self._robot = self._world.scene.get_object("float_bot")
-        # self._robot.set_world_pose(np.array([-10.0, 10.0, 0.2]), np.array([0.0, 0.0, 0.0, 1.0]))
-        # self._robot.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
 
         self.set_camera_view()
         await self.disable_gravity()
@@ -205,9 +203,28 @@ class ESI(BaseSample):
 
     async def setup_post_reset(self):
         self._world = self.get_world()
-        self.register_sim_step_callback()
         print("Post Reset")
         return
 
     def world_cleanup(self):
+        return
+
+    async def add_cube_at(self, x, y, color, name):
+        world = self.get_world()
+        fancy_cube = world.scene.add(
+            DynamicCuboid(prim_path="/World/tiles/cube_" + str(name), 
+            name=name, 
+            position=np.array([x, y, 0.0]),
+            scale=np.array([0.95, 0.95, 0.01]),
+            color=color,
+            ))
+
+    async def _on_add_tiles_event_async(self):
+
+        # 1000 took 13 seconds, 2000 took 36
+        for x in range(0,20):
+            for y in range(0,20):
+                tile_name = f"{x},{y}"
+                await self.add_cube_at(x, y, np.array([0.0, 1.0, 0.0]), tile_name)
+
         return
