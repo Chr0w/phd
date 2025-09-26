@@ -21,6 +21,7 @@ if current_dir not in sys.path:
 from pxr import UsdPhysics, PhysxSchema, Gf, PhysicsSchemaTools, UsdGeom
 import omni
 from omni.isaac.core import SimulationContext
+from omni.physx.scripts import physicsUtils
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from isaacsim.examples.interactive.base_sample import BaseSample
 from isaacsim.core.utils.viewports import set_camera_view
@@ -33,11 +34,26 @@ from isaacsim.core.api.robots import Robot
 from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
 from robot_logger import RobotLogger
 
+from isaacsim.core.utils.stage import add_reference_to_stage
+from isaacsim.storage.native import get_assets_root_path
+
 # To link this repo with isaac sim:
 # cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive
 # ln -s /home/${USER}/phd/esi/ user_examples
 
+class square:
+    def __init__(self, ll, ur, color, name):
+        self.ll = ll
+        self.ur = ur
+        self.color = color
+        self.name = name
+        self.x_length = ur[0] - ll[0]
+        self.y_length = ur[1] - ll[1]
+        self.x = (ur[0] + ll[0]) / 2
+        self.y = (ur[1] + ll[1]) / 2
+
 class ESI(BaseSample):
+
 
     def register_sim_step_callback(self):
         print("Registering sim step callback")
@@ -49,10 +65,7 @@ class ESI(BaseSample):
 
         USER = os.environ.get("USER")
         self._import_robot_usd_path = f"/home/{USER}/isaac_sim_files/float_bot_2.usd"
-        self._import_map_usd_path = f"/home/{USER}/isaac_sim_files/map_1_for_import.usd"
-
-        # Initialize robot logger
-        # self._robot_logger = RobotLogger(log_interval=0.1, stop_logging_time=15.0)
+        self._import_map_usd_path = f"/home/{USER}/isaac_sim_files/map_2_for_import.usd"
 
         return
 
@@ -67,14 +80,30 @@ class ESI(BaseSample):
         )
 
     def set_camera_view(self):
-        set_camera_view(eye=[-25.0, -35, 30], target=[0.00, 0.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
+        # set_camera_view(eye=[-8.0, -25, 30], target=[16.00, 16.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
+        set_camera_view(eye=[25.0, 25.0, 100], target=[25.00, 25.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
+
+    def spawn_object(self, asset_path, prim_path):
+        add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
+
+    def translate_object(self, prim_path, translate):
+        box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
+        physicsUtils.set_or_add_translate_op(box_mesh, translate=translate)
+
 
     def setup_scene(self):
         self.create_dome_light()
-        world = self.get_world()
+        self._world = self.get_world()
+        self._stage = omni.usd.get_context().get_stage()
         add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
         add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
         self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
+
+
+
+
+        # add_reference_to_stage(usd_path=asset_path, prim_path=f"/large_gear")
+
 
         return
 
@@ -203,28 +232,112 @@ class ESI(BaseSample):
 
     async def setup_post_reset(self):
         self._world = self.get_world()
+        self.register_sim_step_callback()
         print("Post Reset")
         return
 
     def world_cleanup(self):
         return
 
-    async def add_cube_at(self, x, y, color, name):
+    # async def add_cube_at(self, x, y, x_length, y_length, color, name):
+    #     world = self.get_world()
+    #     offset = -0.5
+    #     print(f"/World/tiles/cube_{name}")
+    #     fancy_cube = world.scene.add(
+    #         DynamicCuboid(prim_path=f"/World/cubes/cube_{name}", 
+    #         name=name, 
+    #         position=np.array([x, y, 0.0]),
+    #         scale=np.array([x_length, y_length, 0.01]),
+    #         color=color,
+    #         ))
+
+    def get_integer_coordinates_in_square(self, square):
+        """
+        Get all integer coordinates within a square object.
+        
+        Args:
+            square: Square object with lower_left and upper_right attributes
+        
+        Returns:
+            list of tuples containing all integer coordinates within the square
+        """
+        # Extract coordinates from the square object
+        lower_left = square.ll
+        upper_right = square.ur
+        
+        x_min, y_min = lower_left
+        x_max, y_max = upper_right
+        
+        # Ensure we have valid coordinates
+        if x_min > x_max or y_min > y_max:
+            raise ValueError("Lower left coordinates must be less than upper right coordinates")
+        
+        # Get all integer coordinates within the square
+        coordinates = []
+        for x in range(int(x_min), int(x_max)):
+            for y in range(int(y_min), int(y_max)):
+                coordinates.append((x, y))
+        
+        return coordinates
+
+
+    async def add_cube_at(self, sq):
         world = self.get_world()
+
         fancy_cube = world.scene.add(
-            DynamicCuboid(prim_path="/World/tiles/cube_" + str(name), 
-            name=name, 
-            position=np.array([x, y, 0.0]),
-            scale=np.array([0.95, 0.95, 0.01]),
-            color=color,
+            DynamicCuboid(prim_path=f"/World/cubes/cube_{sq.name}", 
+            name=sq.name, 
+            position=np.array([sq.x, sq.y, 0.0]),
+            scale=np.array([sq.x_length, sq.y_length, 0.01]),
+            color=sq.color,
             ))
 
-    async def _on_add_tiles_event_async(self):
 
-        # 1000 took 13 seconds, 2000 took 36
-        for x in range(0,20):
-            for y in range(0,20):
-                tile_name = f"{x},{y}"
-                await self.add_cube_at(x, y, np.array([0.0, 1.0, 0.0]), tile_name)
+
+    def get_random_not_free_space(self, free_spaces):
+        while True:
+            random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
+            positions = []
+            positions.append((random_space[0], random_space[1] -1))
+            positions.append((random_space[0], random_space[1]))
+            positions.append((random_space[0], random_space[1] + 1))
+            positions.append((random_space[0] - 1, random_space[1] -1))
+            positions.append((random_space[0] - 1, random_space[1]))
+            positions.append((random_space[0] - 1, random_space[1] + 1))
+            positions.append((random_space[0] + 1, random_space[1] -1))
+            positions.append((random_space[0] + 1, random_space[1]))
+            positions.append((random_space[0] + 1, random_space[1] + 1))
+
+            if all(position not in free_spaces for position in positions):
+                return random_space, positions
+
+
+    async def _on_add_objects_event_async(self):
+
+        # Define free space
+        square_1 = square([5,0], [10,50], np.array([0.0, 1.0, 0.0]), "1")
+        square_2 = square([20,0], [25,50], np.array([0.0, 1.0, 0.0]), "2")
+        square_3 = square([35,0], [40,50], np.array([0.0, 1.0, 0.0]), "3")
+        square_4 = square([0,10], [50,15], np.array([0.0, 1.0, 0.0]), "4")
+        square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0.0]), "5")
+        free_spaces = []
+
+        for i in range(1,6):
+            await self.add_cube_at(eval(f"square_{i}"))
+            free_spaces = free_spaces + self.get_integer_coordinates_in_square(eval(f"square_{i}"))
+
+        asset_path = "/home/mircrda/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        box_x_length = 2
+        box_y_width = 2
+
+        for i in range(50):
+            prim_name = f"/WoodenCrate_A1_{i}"
+            random_pos, box_positions = self.get_random_not_free_space(free_spaces)
+
+            # print("random_pos: ", random_pos)
+            self.spawn_object(asset_path, prim_name)
+            self.translate_object(prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
+            free_spaces.append(box_positions)
 
         return
+

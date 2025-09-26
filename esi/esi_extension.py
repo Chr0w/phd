@@ -71,35 +71,35 @@ class EsiExtensionUI(BaseSampleUITemplate):
             ):
                 self.build_task_controls_ui()
 
-    def _on_add_tiles_event(self):
-        print("Spawn floor tiles button pressed")
-        asyncio.ensure_future(self.sample._on_add_tiles_event_async())
-        self.task_ui_elements["Add floor tiles"].enabled = False
+    def _on_add_objects_event(self):
+        print("Spawn objects button pressed")
+        asyncio.ensure_future(self.sample._on_add_objects_event_async())
+        self.task_ui_elements["Add objects"].enabled = False
         return
 
     def post_reset_button_event(self):
-        self.task_ui_elements["Add floor tiles"].enabled = True
+        self.task_ui_elements["Add objects"].enabled = True
         return
 
     def post_load_button_event(self):
-        self.task_ui_elements["Add floor tiles"].enabled = True
+        self.task_ui_elements["Add objects"].enabled = True
         return
 
     def post_clear_button_event(self):
-        # World needs to be loaded before tiles can be added
-        self.task_ui_elements["Add floor tiles"].enabled = True
+        # World needs to be loaded before objects can be added
+        self.task_ui_elements["Add objects"].enabled = True
         return
 
     def build_task_controls_ui(self):
         with ui.VStack(spacing=5):
 
             dict = {
-                "label": "Add tiles",
+                "label": "Add objects",
                 "type": "button",
-                "text": "Spawn floor tiles",
-                "tooltip": "1m² floor tiles",
-                "on_clicked_fn": self._on_add_tiles_event,
+                "text": "Spawn objects",
+                "tooltip": "1m² objects",
+                "on_clicked_fn": self._on_add_objects_event,
             }
 
-            self.task_ui_elements["Add floor tiles"] = btn_builder(**dict)
-            self.task_ui_elements["Add floor tiles"].enabled = False
+            self.task_ui_elements["Add objects"] = btn_builder(**dict)
+            self.task_ui_elements["Add objects"].enabled = False
