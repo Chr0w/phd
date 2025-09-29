@@ -293,23 +293,45 @@ class ESI(BaseSample):
             ))
 
 
+    def check_square_overlap(self, single_square, square_list):
+        """
+        Check if a single square overlaps with any squares in a list.
+        
+        Args:
+            single_square: square object with ll and ur attributes
+            square_list: list of square objects with ll and ur attributes
+        
+        Returns:
+            bool: True if there is any overlap, False otherwise
+        """
+        # Extract coordinates from the single square
+        x1_min, y1_min = single_square.ll
+        x1_max, y1_max = single_square.ur
+        
+        # Check overlap with each square in the list
+        for square in square_list:
+            # Extract coordinates from the current square in the list
+            x2_min, y2_min = square.ll
+            x2_max, y2_max = square.ur
+            
+            # Check if rectangles overlap
+            if (x1_min < x2_max and x1_max > x2_min and 
+                y1_min < y2_max and y1_max > y2_min):
+                return True  # Found an overlap
+        
+        return False  # No overlaps found
+
 
     def get_random_not_free_space(self, free_spaces):
-        while True:
-            random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
-            positions = []
-            positions.append((random_space[0], random_space[1] -1))
-            positions.append((random_space[0], random_space[1]))
-            positions.append((random_space[0], random_space[1] + 1))
-            positions.append((random_space[0] - 1, random_space[1] -1))
-            positions.append((random_space[0] - 1, random_space[1]))
-            positions.append((random_space[0] - 1, random_space[1] + 1))
-            positions.append((random_space[0] + 1, random_space[1] -1))
-            positions.append((random_space[0] + 1, random_space[1]))
-            positions.append((random_space[0] + 1, random_space[1] + 1))
 
-            if all(position not in free_spaces for position in positions):
-                return random_space, positions
+        do_continue = True
+        while do_continue:
+            random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
+            sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
+        
+            do_continue = self.check_square_overlap(sq, free_spaces)
+ 
+        return random_space, sq
 
 
     async def _on_add_objects_event_async(self):
@@ -321,23 +343,23 @@ class ESI(BaseSample):
         square_4 = square([0,10], [50,15], np.array([0.0, 1.0, 0.0]), "4")
         square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0.0]), "5")
         free_spaces = []
+        
+        asset_path = "/home/mircrda/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
         for i in range(1,6):
             await self.add_cube_at(eval(f"square_{i}"))
-            free_spaces = free_spaces + self.get_integer_coordinates_in_square(eval(f"square_{i}"))
-
-        asset_path = "/home/mircrda/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
-        box_x_length = 2
-        box_y_width = 2
+            free_spaces.append(eval(f"square_{i}"))
 
         for i in range(50):
             prim_name = f"/WoodenCrate_A1_{i}"
-            random_pos, box_positions = self.get_random_not_free_space(free_spaces)
+            random_pos, sq = self.get_random_not_free_space(free_spaces)
+            free_spaces.append(sq)
 
             # print("random_pos: ", random_pos)
             self.spawn_object(asset_path, prim_name)
             self.translate_object(prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
-            free_spaces.append(box_positions)
+
+
 
         return
 
