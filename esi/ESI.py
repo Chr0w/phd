@@ -33,6 +33,7 @@ from isaacsim.core.prims import SingleRigidPrim
 from isaacsim.core.api.robots import Robot
 from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
 from robot_logger import RobotLogger
+from mission import Mission, MissionType, Waypoint, StatusType
 
 from isaacsim.core.utils.stage import add_reference_to_stage
 from isaacsim.storage.native import get_assets_root_path
@@ -63,9 +64,9 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
-        USER = os.environ.get("USER")
-        self._import_robot_usd_path = f"/home/{USER}/isaac_sim_files/float_bot_2.usd"
-        self._import_map_usd_path = f"/home/{USER}/isaac_sim_files/map_2_for_import.usd"
+        self._USER = os.environ.get("USER")
+        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_2.usd"
+        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
 
         return
 
@@ -90,6 +91,45 @@ class ESI(BaseSample):
         box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
         physicsUtils.set_or_add_translate_op(box_mesh, translate=translate)
 
+    def rotate_object(self, prim_path, rotation):
+        """
+        Rotate an object around the z-axis by a given yaw angle in degrees.
+        
+        Args:
+            prim_path (str): The path to the object to rotate
+            rotation (float): Yaw angle in degrees around the z-axis
+        """
+        rotation_quaternion = self.yaw_to_quaternion(rotation)
+        box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
+        physicsUtils.set_or_add_orient_op(box_mesh, rotation_quaternion)
+
+    def yaw_to_quaternion(self, yaw_degrees):
+        """
+        Convert a yaw angle in degrees to a quaternion.
+        
+        Args:
+            yaw_degrees (float): Yaw angle in degrees around the z-axis
+            
+        Returns:
+            Gf.Quatd: USD quaternion object
+        """
+        # Convert degrees to radians
+        yaw_radians = np.radians(yaw_degrees)
+        half_yaw = yaw_radians / 2.0
+        
+        w = np.cos(half_yaw)
+        x = 0.0
+        y = 0.0
+        z = np.sin(half_yaw)
+        
+        return Gf.Quatd(w, x, y, z)
+
+    def setup_missions(self):
+        mission_1 = Mission(0, MissionType.MOVE_TO_WAYPOINT, Waypoint(0.0, 37.5))
+        mission_2 = Mission(1, MissionType.MOVE_TO_WAYPOINT, Waypoint(0.0, 40.0))
+        mission_1.set_status(StatusType.IN_PROGRESS)
+        return [mission_1, mission_2]
+
 
     def setup_scene(self):
         self.create_dome_light()
@@ -99,11 +139,14 @@ class ESI(BaseSample):
         add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
         self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
 
+        self.translate_object("/float_bot", Gf.Vec3f(7.5, 37.5, 0.0))
+        self.rotate_object("/float_bot", -90.0)
 
+        self._misisons = self.setup_missions()
+        for mission in self._misisons:
+            print(mission)
 
-
-        # add_reference_to_stage(usd_path=asset_path, prim_path=f"/large_gear")
-
+        self._current_mission_number = 0
 
         return
 
@@ -116,98 +159,145 @@ class ESI(BaseSample):
         return
 
 
-    def print_cube_info(self):
-        position, orientation = self._robot.get_world_pose()
-        current_time = self._simulation_context.current_time
+    def check_if_at_waypoint(self, mission, time):
+        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        waypoint = mission.get_waypoint()
+        # Convert waypoint to numpy array for distance calculation
+        waypoint_position = np.array([waypoint.x, waypoint.y, robot_current_position[2]]) 
+        distance = np.linalg.norm(robot_current_position - waypoint_position)
+        print(f"Distance to waypoint: {distance}")
+        return distance < 0.1
+
+    def step_move_to_waypoint(self, mission, time):
+        print(f"Moving to waypoint {mission.get_waypoint()}")
+
+        done = self.check_if_at_waypoint(mission, time)
+        if done:
+            mission.set_status(StatusType.SUCCESS)
+            print(f"setting mission status to SUCCESS")
+            return mission
         
+        # print(f"Robot current position: {robot_current_position}")
+        # done = check_at_waypoint()
+
+        return mission
+
+    def step_pause(self, mission, time):
+        print(f"On pause...")
+        return
+
+    def step_mission(self, time):
+        # Check if we have completed all missions
+        if self._current_mission_number >= len(self._misisons):
+            print(f"All missions completed")
+            return
         
-        # Log robot pose data
-        # try:
-        #     logging_stopped = self._robot_logger.log_robot_pose(current_time, position, orientation)
-        #     if logging_stopped:
-        #         print("Logging has been stopped and CSV file saved!")
-        # except Exception as e:
-        #     print(f"Error in logging: {e}")
+        print(f"Stepping mission nr. {self._current_mission_number}")
+        misssion = self._misisons[self._current_mission_number]
+        # print(misssion)
+        if misssion.get_status() != StatusType.IN_PROGRESS:
+            print(f"Error: Mission nr. {self._current_mission_number} is not in progress")
+            return
+        
+        if misssion.get_type() == MissionType.MOVE_TO_WAYPOINT:
+            misssion = self.step_move_to_waypoint(misssion, time)
+        elif misssion.get_type() == MissionType.PAUSE:
+            misssion = self.step_pause(misssion, time)
+        else:
+            print(f"Error: Mission nr. {self._current_mission_number} is not a valid mission type")
+            return
+
+        if misssion.get_status() == StatusType.SUCCESS:
+            print(f"Mission {self._current_mission_number} completed successfully!")
+            self._current_mission_number += 1
+            if self._current_mission_number < len(self._misisons):
+                self._misisons[self._current_mission_number].set_status(StatusType.IN_PROGRESS)
+                print(f"Starting mission {self._current_mission_number}")
+            else:
+                print(f"All missions completed")
+                return
+        # print(f"after stepping -")
+        # print(f"Mission nr. {self._current_mission_number} status: {misssion.get_status()}")
+
 
 
     def custom_simulation_step(self, step_size):
         time = self._simulation_context.current_time
+        self.step_mission(time)
 
         # Define time intervals with both linear and angular velocities (in robot's local frame)
         # Format: (time_threshold, linear_velocity, angular_velocity)
         # linear_velocity: [forward, left, up] in robot's frame
         # angular_velocity: [roll, pitch, yaw] in robot's frame
 
-        speed_scalar = 1
+        # speed_scalar = 1
 
-        cmd_1 = (0, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))
-        cmd_2 = (4, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_3 = (6, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        cmd_4 = (12, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_5 = (14, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        cmd_6 = (20, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_7 = (22, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        cmd_8 = (26, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_9 = (28, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))   
-        cmd_10 = (35, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_11 = (37, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        cmd_12 = (41, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_13 = (43, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        cmd_14 = (46, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_15 = (48, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        cmd_16 = (50, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        cmd_17 = (53, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))     
-        stop = (55, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))         
+        # cmd_1 = (0, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))
+        # cmd_2 = (4, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_3 = (6, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        # cmd_4 = (12, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_5 = (14, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        # cmd_6 = (20, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_7 = (22, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
+        # cmd_8 = (26, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_9 = (28, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))   
+        # cmd_10 = (35, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_11 = (37, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        # cmd_12 = (41, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_13 = (43, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        # cmd_14 = (46, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_15 = (48, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
+        # cmd_16 = (50, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
+        # cmd_17 = (53, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))     
+        # stop = (55, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))         
 
-        velocity_schedule = [
-            cmd_1,
-            cmd_2,  
-            cmd_3,
-            cmd_4,
-            cmd_5,
-            cmd_6,
-            cmd_7,
-            cmd_8,
-            cmd_9,
-            cmd_10,
-            cmd_11,
-            cmd_12,
-            cmd_13,
-            cmd_14,
-            cmd_15,
-            cmd_16,
-            cmd_17,
-            stop
-        ]
+        # velocity_schedule = [
+        #     cmd_1,
+        #     cmd_2,  
+        #     cmd_3,
+        #     cmd_4,
+        #     cmd_5,
+        #     cmd_6,
+        #     cmd_7,
+        #     cmd_8,
+        #     cmd_9,
+        #     cmd_10,
+        #     cmd_11,
+        #     cmd_12,
+        #     cmd_13,
+        #     cmd_14,
+        #     cmd_15,
+        #     cmd_16,
+        #     cmd_17,
+        #     stop
+        # ]
         
-        # Find the appropriate velocities based on current time
-        current_linear_velocity_local = np.array([0.0, 0.0, 0.0])  # Default linear velocity (robot frame)
-        current_angular_velocity_local = np.array([0.0, 0.0, 0.0]) # Default angular velocity (robot frame)
+        # # Find the appropriate velocities based on current time
+        # current_linear_velocity_local = np.array([0.0, 0.0, 0.0])  # Default linear velocity (robot frame)
+        # current_angular_velocity_local = np.array([0.0, 0.0, 0.0]) # Default angular velocity (robot frame)
         
-        for threshold_time, linear_vel, angular_vel in velocity_schedule:
-            if time >= threshold_time:
-                current_linear_velocity_local = linear_vel
-                current_angular_velocity_local = angular_vel
+        # for threshold_time, linear_vel, angular_vel in velocity_schedule:
+        #     if time >= threshold_time:
+        #         current_linear_velocity_local = linear_vel
+        #         current_angular_velocity_local = angular_vel
         
-        # Get robot's current orientation
-        position, orientation = self._robot.get_world_pose()
+        # # Get robot's current orientation
+        # position, orientation = self._robot.get_world_pose()
         
-        # Transform linear velocity from robot's local frame to world frame
-        # Convert quaternion to rotation matrix
-        rot_matrix = quat_to_rot_matrix(orientation)
+        # # Transform linear velocity from robot's local frame to world frame
+        # # Convert quaternion to rotation matrix
+        # rot_matrix = quat_to_rot_matrix(orientation)
         
-        # Transform linear velocity: world_vel = R * local_vel
-        current_linear_velocity_world = rot_matrix @ current_linear_velocity_local
+        # # Transform linear velocity: world_vel = R * local_vel
+        # current_linear_velocity_world = rot_matrix @ current_linear_velocity_local
         
-        # Angular velocity is already in world frame (no transformation needed)
-        # But if you want it relative to robot's frame, you would need to transform it too
-        current_angular_velocity_world = current_angular_velocity_local
+        # # Angular velocity is already in world frame (no transformation needed)
+        # # But if you want it relative to robot's frame, you would need to transform it too
+        # current_angular_velocity_world = current_angular_velocity_local
         
-        # Set the robot's velocities in world frame
-        self._robot.set_linear_velocity(current_linear_velocity_world)
-        self._robot.set_angular_velocity(current_angular_velocity_world)
-
-        # self.print_cube_info()
+        # # Set the robot's velocities in world frame
+        # self._robot.set_linear_velocity(current_linear_velocity_world)
+        # self._robot.set_angular_velocity(current_angular_velocity_world)
 
 
     async def setup_post_load(self):
@@ -224,8 +314,6 @@ class ESI(BaseSample):
 
 
 
-
-
     async def setup_pre_reset(self):
         print("Pre Reset")
         return
@@ -238,18 +326,6 @@ class ESI(BaseSample):
 
     def world_cleanup(self):
         return
-
-    # async def add_cube_at(self, x, y, x_length, y_length, color, name):
-    #     world = self.get_world()
-    #     offset = -0.5
-    #     print(f"/World/tiles/cube_{name}")
-    #     fancy_cube = world.scene.add(
-    #         DynamicCuboid(prim_path=f"/World/cubes/cube_{name}", 
-    #         name=name, 
-    #         position=np.array([x, y, 0.0]),
-    #         scale=np.array([x_length, y_length, 0.01]),
-    #         color=color,
-    #         ))
 
     def get_integer_coordinates_in_square(self, square):
         """
@@ -344,7 +420,7 @@ class ESI(BaseSample):
         square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0.0]), "5")
         free_spaces = []
         
-        asset_path = "/home/mircrda/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
         for i in range(1,6):
             await self.add_cube_at(eval(f"square_{i}"))
@@ -358,6 +434,9 @@ class ESI(BaseSample):
             # print("random_pos: ", random_pos)
             self.spawn_object(asset_path, prim_name)
             self.translate_object(prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
+            # Apply collision API to the prim
+            prim = self._stage.GetPrimAtPath(prim_name)
+            UsdPhysics.CollisionAPI.Apply(prim)
 
 
 
