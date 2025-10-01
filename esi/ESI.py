@@ -34,6 +34,7 @@ from isaacsim.core.api.robots import Robot
 from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
 from robot_logger import RobotLogger
 from mission import Mission, MissionType, Waypoint, StatusType
+from omni.isaac.core.objects import VisualCuboid, FixedCuboid
 
 from isaacsim.core.utils.stage import add_reference_to_stage
 from isaacsim.storage.native import get_assets_root_path
@@ -55,6 +56,7 @@ class square:
 
 class ESI(BaseSample):
 
+    
 
     def register_sim_step_callback(self):
         print("Registering sim step callback")
@@ -67,6 +69,7 @@ class ESI(BaseSample):
         self._USER = os.environ.get("USER")
         self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_2.usd"
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
+        self._previous_speed = 0.0
 
         return
 
@@ -86,6 +89,25 @@ class ESI(BaseSample):
 
     def spawn_object(self, asset_path, prim_path):
         add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
+        
+        # Remove physical properties to make objects non-physical
+        prim = self._stage.GetPrimAtPath(prim_path)
+        if prim:
+            # Remove RigidBodyAPI if it exists
+            rigid_body_api = UsdPhysics.RigidBodyAPI.Get(self._stage, prim_path)
+            if rigid_body_api:
+                rigid_body_api.GetPrim().RemoveAPI(UsdPhysics.RigidBodyAPI)
+            
+            # Remove CollisionAPI if it exists
+            collision_api = UsdPhysics.CollisionAPI.Get(self._stage, prim_path)
+            if collision_api:
+                collision_api.GetPrim().RemoveAPI(UsdPhysics.CollisionAPI)
+            
+            # Remove any physics schemas
+            physics_schemas = prim.GetAppliedSchemas()
+            for schema in physics_schemas:
+                if "Physics" in schema:
+                    prim.RemoveAPI(schema)
 
     def translate_object(self, prim_path, translate):
         box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
@@ -123,12 +145,73 @@ class ESI(BaseSample):
         z = np.sin(half_yaw)
         
         return Gf.Quatd(w, x, y, z)
+    
+    def _quaternion_to_yaw_radians(self, quaternion):
+        """Convert quaternion to yaw angle in radians around Z-axis"""
+        # Extract quaternion components (w, x, y, z)
+        w, x, y, z = quaternion
+        
+        # Calculate yaw angle from quaternion
+        # yaw = atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+        yaw_radians = np.arctan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        
+        return yaw_radians
+
+    def create_waypoint(self, x, y):
+        """
+        Create a visual waypoint marker and return a Waypoint object
+        
+        Args:
+            x (float): X coordinate of the waypoint
+            y (float): Y coordinate of the waypoint
+            
+        Returns:
+            Waypoint: Waypoint object with the given coordinates
+        """
+        # Create a purple dynamic cube at the waypoint position
+        waypoint_name = f"waypoint_{x}_{y}".replace(".", "_")
+        waypoint_prim_path = f"/World/waypoints/{waypoint_name}"
+        
+        # Create a static visual cube as waypoint marker
+        try:
+            waypoint_cube = self._world.scene.add(
+                VisualCuboid(
+                    prim_path=waypoint_prim_path,
+                    name=waypoint_name,
+                    position=np.array([x, y, 0.1]),  # Slightly above ground
+                    scale=np.array([0.5, 0.5, 0.1]),  # Flat cube
+                    color=np.array([0.5, 0.0, 0.8])  # Purple color
+                )
+            )
+        except Exception as e:
+            print(f"Waypoint {waypoint_name} already exists: {e}")
+            # Return the Waypoint object anyway so missions can still work
+            return Waypoint(x, y)
+        
+        # Remove collision API from the waypoint cube (it's just a visual marker)
+        prim = self._stage.GetPrimAtPath(waypoint_prim_path)
+        if prim:
+            # Remove any existing collision APIs
+            collision_api = UsdPhysics.CollisionAPI.Get(self._stage, waypoint_prim_path)
+            if collision_api:
+                collision_api.GetPrim().RemoveAPI(UsdPhysics.CollisionAPI)
+        
+        # Return the Waypoint object
+        return Waypoint(x, y)
 
     def setup_missions(self):
-        mission_1 = Mission(0, MissionType.MOVE_TO_WAYPOINT, Waypoint(0.0, 37.5))
-        mission_2 = Mission(1, MissionType.MOVE_TO_WAYPOINT, Waypoint(0.0, 40.0))
-        mission_1.set_status(StatusType.IN_PROGRESS)
-        return [mission_1, mission_2]
+        mission_0 = Mission(0, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(7.5, 12.5))
+        mission_1 = Mission(1, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(22.5, 12.5))
+        mission_2 = Mission(2, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(22.5, 37.5))
+        mission_3 = Mission(3, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(37.5, 37.5))
+        mission_4 = Mission(4, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(37.5, 12.5))
+        
+        mission_0.set_status(StatusType.IN_PROGRESS)
+        self._current_mission_number = 0
+        self._all_missions_completed = False
+        self._new_mission = True
+        
+        return [mission_0, mission_1, mission_2, mission_3, mission_4]
 
 
     def setup_scene(self):
@@ -140,13 +223,9 @@ class ESI(BaseSample):
         self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
 
         self.translate_object("/float_bot", Gf.Vec3f(7.5, 37.5, 0.0))
-        self.rotate_object("/float_bot", -90.0)
+        # self.rotate_object("/float_bot", -90.0)
 
-        self._misisons = self.setup_missions()
-        for mission in self._misisons:
-            print(mission)
-
-        self._current_mission_number = 0
+        self._misisons = self.setup_missions()        
 
         return
 
@@ -165,11 +244,85 @@ class ESI(BaseSample):
         # Convert waypoint to numpy array for distance calculation
         waypoint_position = np.array([waypoint.x, waypoint.y, robot_current_position[2]]) 
         distance = np.linalg.norm(robot_current_position - waypoint_position)
-        print(f"Distance to waypoint: {distance}")
         return distance < 0.1
 
+
+    def move_towards_target(self, mission):
+        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        waypoint = mission.get_waypoint()
+        
+        # Calculate the direction vector from robot to waypoint
+        direction_vector = np.array([waypoint.x - robot_current_position[0], 
+                                   waypoint.y - robot_current_position[1]])
+        
+        # Calculate the required yaw angle to face the target
+        target_yaw_radians = np.arctan2(direction_vector[1], direction_vector[0])
+        
+        # Get current robot yaw from quaternion
+        current_yaw_radians = self._quaternion_to_yaw_radians(robot_current_orientation)
+        
+        # Calculate the angular difference
+        yaw_error = target_yaw_radians - current_yaw_radians
+        
+        # Normalize angle to [-π, π]
+        while yaw_error > np.pi:
+            yaw_error -= 2 * np.pi
+        while yaw_error < -np.pi:
+            yaw_error += 2 * np.pi
+        
+        # Calculate angular velocity based on error (proportional control)
+        angular_gain = 1.5  # Adjust this for faster/slower turning
+        angular_velocity_z = angular_gain * yaw_error
+        
+        # Limit angular velocity to prevent overshooting
+        max_angular_velocity = 1.0  # rad/s
+        angular_velocity_z = np.clip(angular_velocity_z, -max_angular_velocity, max_angular_velocity)
+        
+        # Set angular velocity for smooth turning
+        angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
+        self._robot.set_angular_velocity(angular_velocity)
+        
+        # Set linear velocity in the direction the robot is facing
+        # Get current robot yaw for forward direction
+        current_yaw_radians = self._quaternion_to_yaw_radians(robot_current_orientation)
+        
+        # Calculate forward direction vector based on current orientation
+        forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
+        
+        # Set movement speed (adjust as needed)
+        top_speed = 1.5
+        speed = 1.5  # meters per second
+
+        # Convert waypoint to numpy array for distance calculation
+        distance = np.linalg.norm(robot_current_position - np.array([waypoint.x, waypoint.y, robot_current_position[2]]))
+
+        if distance < 2.5:
+            speed = max(speed * distance/2.5, 0.75)
+
+        if speed - self._previous_speed > 0.005: 
+            speed = self._previous_speed + 0.005
+        
+        if speed > top_speed:
+            speed = top_speed
+
+        print(f"Speed: {speed}")
+        print(f"previous speed: {self._previous_speed}")
+        
+        # Calculate linear velocity in world frame
+        linear_velocity_world = np.array([forward_direction[0] * speed, 
+                                        forward_direction[1] * speed, 
+                                        0.0])  # No vertical movement
+        
+        # Set the robot's linear velocity
+        self._robot.set_linear_velocity(linear_velocity_world)
+        self._previous_speed = speed
+        
+        return yaw_error
+
+
+
     def step_move_to_waypoint(self, mission, time):
-        print(f"Moving to waypoint {mission.get_waypoint()}")
+        self.move_towards_target(mission)
 
         done = self.check_if_at_waypoint(mission, time)
         if done:
@@ -182,17 +335,27 @@ class ESI(BaseSample):
 
         return mission
 
+    def stop_motion(self):
+        self._robot.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
+        self._robot.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
+        return
+
     def step_pause(self, mission, time):
         print(f"On pause...")
         return
 
     def step_mission(self, time):
+        if self._new_mission:
+            print(f"Starting mission nr {self._current_mission_number} (of {len(self._misisons)}")
+            self._new_mission = False
+
         # Check if we have completed all missions
         if self._current_mission_number >= len(self._misisons):
-            print(f"All missions completed")
+            if not self._all_missions_completed:
+                print(f"All missions completed - stopping mission execution")
+                self._all_missions_completed = True
             return
         
-        print(f"Stepping mission nr. {self._current_mission_number}")
         misssion = self._misisons[self._current_mission_number]
         # print(misssion)
         if misssion.get_status() != StatusType.IN_PROGRESS:
@@ -208,96 +371,27 @@ class ESI(BaseSample):
             return
 
         if misssion.get_status() == StatusType.SUCCESS:
+            self.stop_motion()
             print(f"Mission {self._current_mission_number} completed successfully!")
             self._current_mission_number += 1
+            self._new_mission = True
             if self._current_mission_number < len(self._misisons):
                 self._misisons[self._current_mission_number].set_status(StatusType.IN_PROGRESS)
-                print(f"Starting mission {self._current_mission_number}")
             else:
-                print(f"All missions completed")
+                print(f"All missions completed - stopping simulation.")
+                # Stop the physics simulation
+                self._world.stop()
                 return
-        # print(f"after stepping -")
-        # print(f"Mission nr. {self._current_mission_number} status: {misssion.get_status()}")
+        if misssion.get_status() == StatusType.FAILED:
+            self.stop_motion()
+            print(f"Mission {self._current_mission_number} failed!")
+            return
 
 
 
     def custom_simulation_step(self, step_size):
         time = self._simulation_context.current_time
         self.step_mission(time)
-
-        # Define time intervals with both linear and angular velocities (in robot's local frame)
-        # Format: (time_threshold, linear_velocity, angular_velocity)
-        # linear_velocity: [forward, left, up] in robot's frame
-        # angular_velocity: [roll, pitch, yaw] in robot's frame
-
-        # speed_scalar = 1
-
-        # cmd_1 = (0, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))
-        # cmd_2 = (4, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_3 = (6, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        # cmd_4 = (12, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_5 = (14, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        # cmd_6 = (20, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_7 = (22, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))       
-        # cmd_8 = (26, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_9 = (28, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))   
-        # cmd_10 = (35, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_11 = (37, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        # cmd_12 = (41, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_13 = (43, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        # cmd_14 = (46, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_15 = (48, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0])) 
-        # cmd_16 = (50, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.5]))       
-        # cmd_17 = (53, np.array([speed_scalar*1.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))     
-        # stop = (55, np.array([speed_scalar*0.0, 0.0, 0.0]), np.array([0.0, 0.0, speed_scalar*0.0]))         
-
-        # velocity_schedule = [
-        #     cmd_1,
-        #     cmd_2,  
-        #     cmd_3,
-        #     cmd_4,
-        #     cmd_5,
-        #     cmd_6,
-        #     cmd_7,
-        #     cmd_8,
-        #     cmd_9,
-        #     cmd_10,
-        #     cmd_11,
-        #     cmd_12,
-        #     cmd_13,
-        #     cmd_14,
-        #     cmd_15,
-        #     cmd_16,
-        #     cmd_17,
-        #     stop
-        # ]
-        
-        # # Find the appropriate velocities based on current time
-        # current_linear_velocity_local = np.array([0.0, 0.0, 0.0])  # Default linear velocity (robot frame)
-        # current_angular_velocity_local = np.array([0.0, 0.0, 0.0]) # Default angular velocity (robot frame)
-        
-        # for threshold_time, linear_vel, angular_vel in velocity_schedule:
-        #     if time >= threshold_time:
-        #         current_linear_velocity_local = linear_vel
-        #         current_angular_velocity_local = angular_vel
-        
-        # # Get robot's current orientation
-        # position, orientation = self._robot.get_world_pose()
-        
-        # # Transform linear velocity from robot's local frame to world frame
-        # # Convert quaternion to rotation matrix
-        # rot_matrix = quat_to_rot_matrix(orientation)
-        
-        # # Transform linear velocity: world_vel = R * local_vel
-        # current_linear_velocity_world = rot_matrix @ current_linear_velocity_local
-        
-        # # Angular velocity is already in world frame (no transformation needed)
-        # # But if you want it relative to robot's frame, you would need to transform it too
-        # current_angular_velocity_world = current_angular_velocity_local
-        
-        # # Set the robot's velocities in world frame
-        # self._robot.set_linear_velocity(current_linear_velocity_world)
-        # self._robot.set_angular_velocity(current_angular_velocity_world)
 
 
     async def setup_post_load(self):
@@ -312,15 +406,19 @@ class ESI(BaseSample):
         self.register_sim_step_callback()
         return
 
-
-
     async def setup_pre_reset(self):
         print("Pre Reset")
+        # Stop robot motion and clear missions
+        self.stop_motion()
+        self._misisons = []
+        self._current_mission_number = 0
+        self._all_missions_completed = False
         return
 
     async def setup_post_reset(self):
         self._world = self.get_world()
-        self.register_sim_step_callback()
+        # self.register_sim_step_callback()
+        self._misisons = self.setup_missions()     
         print("Post Reset")
         return
 
@@ -361,7 +459,7 @@ class ESI(BaseSample):
         world = self.get_world()
 
         fancy_cube = world.scene.add(
-            DynamicCuboid(prim_path=f"/World/cubes/cube_{sq.name}", 
+            FixedCuboid(prim_path=f"/World/cubes/cube_{sq.name}", 
             name=sq.name, 
             position=np.array([sq.x, sq.y, 0.0]),
             scale=np.array([sq.x_length, sq.y_length, 0.01]),
@@ -398,8 +496,10 @@ class ESI(BaseSample):
         return False  # No overlaps found
 
 
-    def get_random_not_free_space(self, free_spaces):
-
+    def get_random_not_free_space(self, free_spaces, seed=42):
+        # Set seed for reproducible "random" placement
+        np.random.seed(seed)
+        
         do_continue = True
         while do_continue:
             random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
@@ -413,22 +513,23 @@ class ESI(BaseSample):
     async def _on_add_objects_event_async(self):
 
         # Define free space
-        square_1 = square([5,0], [10,50], np.array([0.0, 1.0, 0.0]), "1")
-        square_2 = square([20,0], [25,50], np.array([0.0, 1.0, 0.0]), "2")
-        square_3 = square([35,0], [40,50], np.array([0.0, 1.0, 0.0]), "3")
-        square_4 = square([0,10], [50,15], np.array([0.0, 1.0, 0.0]), "4")
-        square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0.0]), "5")
+        square_1 = square([5,0], [10,50], np.array([0.0, 1.0, 0]), "1")
+        square_2 = square([20,0], [25,50], np.array([0.0, 1.0, 0]), "2")
+        square_3 = square([35,0], [40,50], np.array([0.0, 1.0, 0]), "3")
+        square_4 = square([0,10], [50,15], np.array([0.0, 1.0, 0]), "4")
+        square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0]), "5")
+        square_6 = square([0,0], [1,1], np.array([0.0, 1.0, 0]), "6")
         free_spaces = []
         
         asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
-        for i in range(1,6):
+        for i in range(1,7):
             await self.add_cube_at(eval(f"square_{i}"))
             free_spaces.append(eval(f"square_{i}"))
 
-        for i in range(50):
-            prim_name = f"/WoodenCrate_A1_{i}"
-            random_pos, sq = self.get_random_not_free_space(free_spaces)
+        for i in range(5):
+            prim_name = f"/map/WoodenCrate_A1_{i}"
+            random_pos, sq = self.get_random_not_free_space(free_spaces, seed=42 + i)
             free_spaces.append(sq)
 
             # print("random_pos: ", random_pos)
@@ -441,4 +542,6 @@ class ESI(BaseSample):
 
 
         return
+
+        
 
