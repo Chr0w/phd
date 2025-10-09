@@ -2,8 +2,7 @@
 
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 export isaac_sim_package_path=$HOME/isaacsim
-#export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-
+export ROS_DISTRO=humble # jazzy seems to be the new default of isaacsim 5.0
 
 # Can only be set once per terminal.
 # Setting this command multiple times will append the internal library path again potentially leading to conflicts

@@ -417,8 +417,23 @@ class ESI(BaseSample):
 
     async def setup_post_reset(self):
         self._world = self.get_world()
-        # self.register_sim_step_callback()
-        self._misisons = self.setup_missions()     
+        # Re-acquire the robot object after reset
+        try:
+            self._robot = self._world.scene.get_object("float_bot")
+        except Exception:
+            # If not found, leave it as is; spawn/setup_scene should recreate it
+            self._robot = None
+
+        # Recreate the simulation context used by the sim step callback
+        self._simulation_context = SimulationContext()
+
+        # Ensure the sim-step callback is registered after a reset so missions get stepped
+        try:
+            self.register_sim_step_callback()
+        except Exception as e:
+            print(f"Warning: failed to register sim step callback after reset: {e}")
+
+        self._misisons = self.setup_missions()
         print("Post Reset")
         return
 
@@ -527,7 +542,7 @@ class ESI(BaseSample):
             await self.add_cube_at(eval(f"square_{i}"))
             free_spaces.append(eval(f"square_{i}"))
 
-        for i in range(5):
+        for i in range(50):
             prim_name = f"/map/WoodenCrate_A1_{i}"
             random_pos, sq = self.get_random_not_free_space(free_spaces, seed=42 + i)
             free_spaces.append(sq)
