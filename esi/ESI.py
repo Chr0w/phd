@@ -67,7 +67,7 @@ class ESI(BaseSample):
         super().__init__()
 
         self._USER = os.environ.get("USER")
-        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_2.usd"
+        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_3.usd"
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
         self._previous_speed = 0.0
 
