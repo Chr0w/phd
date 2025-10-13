@@ -70,6 +70,7 @@ class ESI(BaseSample):
         self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_3.usd"
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
         self._previous_speed = 0.0
+        self._previous_angular_velocity_ = 0.0
 
         return
 
@@ -271,12 +272,17 @@ class ESI(BaseSample):
             yaw_error += 2 * np.pi
         
         # Calculate angular velocity based on error (proportional control)
-        angular_gain = 1.5  # Adjust this for faster/slower turning
-        angular_velocity_z = angular_gain * yaw_error
-        
+        spin_direction = -1.0 if yaw_error < 0 else 1.0
+
+        if abs(yaw_error - self._previous_angular_velocity_) > 0.01:
+            angular_velocity_z = yaw_error
+        else:
+            angular_velocity_z = self._previous_angular_velocity_ + spin_direction * 0.01
+
         # Limit angular velocity to prevent overshooting
         max_angular_velocity = 1.0  # rad/s
         angular_velocity_z = np.clip(angular_velocity_z, -max_angular_velocity, max_angular_velocity)
+        print(f"Yaw error (radians): {yaw_error}, Angular velocity (rad/s): {angular_velocity_z}")
         
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
@@ -316,6 +322,7 @@ class ESI(BaseSample):
         # Set the robot's linear velocity
         self._robot.set_linear_velocity(linear_velocity_world)
         self._previous_speed = speed
+        self._previous_angular_velocity_ = angular_velocity_z
         
         return yaw_error
 
