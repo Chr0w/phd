@@ -1,34 +1,35 @@
 import numpy as np
 import csv
 import os
+from typing import List, Tuple
 
 
 class RobotLogger:
-    def __init__(self, log_interval=0.1, stop_logging_time=15.0):
+    def __init__(self, log_interval: float = 0.1, stop_logging_time: float = 15.0) -> None:
         """
         Initialize robot trajectory logger
         
         Args:
-            log_interval (float): Time interval between log entries in seconds (default: 0.1s = 10Hz)
-            stop_logging_time (float): Time when logging should stop (default: 15.0s)
+            log_interval: Time interval between log entries in seconds (default: 0.1s = 10Hz)
+            stop_logging_time: Time when logging should stop (default: 15.0s)
         """
-        self._csv_data = []
-        self._last_log_time = 0.0
-        self._log_interval = log_interval
-        self._stop_logging_time = stop_logging_time
-        self._logging_active = True
+        self._csv_data: List[List[float]] = []
+        self._last_log_time: float = 0.0
+        self._log_interval: float = log_interval
+        self._stop_logging_time: float = stop_logging_time
+        self._logging_active: bool = True
     
-    def log_robot_pose(self, current_time, position, orientation):
+    def log_robot_pose(self, current_time: float, position: np.ndarray, orientation: np.ndarray) -> bool:
         """
         Log robot pose data at specified frequency
         
         Args:
-            current_time (float): Current simulation time
-            position (np.array): Robot position [x, y, z]
-            orientation (np.array): Robot orientation quaternion [w, x, y, z]
+            current_time: Current simulation time
+            position: Robot position [x, y, z]
+            orientation: Robot orientation quaternion [w, x, y, z]
         
         Returns:
-            bool: True if logging was stopped, False otherwise
+            True if logging was stopped, False otherwise
         """
         # CSV logging logic
         if self._logging_active and current_time >= self._last_log_time + self._log_interval:
@@ -52,7 +53,7 @@ class RobotLogger:
         
         return False
     
-    def _quaternion_to_yaw_degrees(self, quaternion):
+    def _quaternion_to_yaw_degrees(self, quaternion: np.ndarray) -> float:
         """Convert quaternion to yaw angle in degrees around Z-axis"""
         # Extract quaternion components (w, x, y, z)
         w, x, y, z = quaternion
@@ -69,7 +70,7 @@ class RobotLogger:
         
         return yaw_degrees
     
-    def _save_csv_data(self):
+    def _save_csv_data(self) -> None:
         """Save the logged data to a CSV file"""
         filename = "robot_trajectory.csv"
         filepath = os.path.join(os.getcwd(), filename)
@@ -84,10 +85,10 @@ class RobotLogger:
         print(f"Robot trajectory data saved to: {filepath}")
         print(f"Total data points logged: {len(self._csv_data)}")
     
-    def get_logging_status(self):
+    def get_logging_status(self) -> bool:
         """Get current logging status"""
         return self._logging_active
     
-    def get_data_count(self):
+    def get_data_count(self) -> int:
         """Get number of logged data points"""
         return len(self._csv_data)

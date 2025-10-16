@@ -12,6 +12,18 @@
 
 import sys
 import os
+import random
+from typing import List, Dict, Tuple, Optional
+
+# ROS2 imports
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import Float32
+    ROS2_AVAILABLE = True
+except ImportError:
+    ROS2_AVAILABLE = False
+    print("Warning: ROS2 not available. Map integrity ratio publishing will be disabled.")
 
 # Add the current directory to Python path to find local modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,8 +61,8 @@ except Exception:
 
 class square:
     def __init__(self, ll, ur, color, name):
-        self.ll = ll
-        self.ur = ur
+        self.ll = ll # Lower left
+        self.ur = ur # Upper right
         self.color = color
         self.name = name
         self.x_length = ur[0] - ll[0]
@@ -75,8 +87,78 @@ class ESI(BaseSample):
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
+        self.previous_time_ = 0.0
+        self.dt = 0.0
+        
+        # Map editing variables
+        self._free_spaces: List['square'] = []  # List of square objects representing free areas
+        self._box_positions: Dict[str, Tuple[Tuple[float, float], 'square']] = {}  # Dictionary mapping prim_name to (position, square) tuples
+        self._moved_boxes: set[str] = set()  # Set of box names that have already been moved
+        
+        # ROS2 initialization
+        self._ros2_initialized = False
+        self._map_integrity_publisher = None
+        if ROS2_AVAILABLE:
+            try:
+                if not rclpy.ok():
+                    rclpy.init()
+                self._ros2_initialized = True
+                print("ROS2 initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize ROS2: {e}")
+                self._ros2_initialized = False
 
         return
+
+    def _setup_ros2_publisher(self):
+        """Setup ROS2 publisher for map integrity ratio"""
+        if not self._ros2_initialized or not ROS2_AVAILABLE:
+            print("ROS2 not available, skipping publisher setup")
+            return
+        
+        try:
+            # Create a simple node for publishing
+            import rclpy
+            from rclpy.node import Node
+            from std_msgs.msg import Float32
+            
+            # Create a minimal node for publishing
+            self._ros2_node = Node('esi_map_integrity_publisher')
+            self._map_integrity_publisher = self._ros2_node.create_publisher(
+                Float32, 
+                '/map_integrity_ratio', 
+                10
+            )
+            print("ROS2 publisher created for /map_integrity_ratio topic")
+        except Exception as e:
+            print(f"Failed to create ROS2 publisher: {e}")
+            self._map_integrity_publisher = None
+
+    def _publish_map_integrity_ratio(self):
+        """Publish the map integrity ratio (untouched boxes / total boxes)"""
+        if not self._map_integrity_publisher or not self._box_positions:
+            return
+        
+        try:
+            total_boxes = len(self._box_positions)
+            untouched_boxes = len(self._box_positions) - len(self._moved_boxes)
+            
+            # Calculate ratio as float (0.0-1.0)
+            if total_boxes > 0:
+                integrity_ratio = float(untouched_boxes / total_boxes)
+            else:
+                integrity_ratio = 0.0
+            
+            # Create and publish message
+            msg = Float32()
+            msg.data = integrity_ratio
+            self._map_integrity_publisher.publish(msg)
+            
+            # Optional: print for debugging
+            print(f"Published map integrity ratio: {integrity_ratio:.3f} ({untouched_boxes}/{total_boxes} boxes untouched)")
+            
+        except Exception as e:
+            print(f"Failed to publish map integrity ratio: {e}")
 
     def create_dome_light(self):
         light_1 = prim_utils.create_prim(
@@ -322,9 +404,8 @@ class ESI(BaseSample):
             angular_velocity_z = self._previous_angular_velocity_ + spin_direction * 0.01
 
         # Limit angular velocity to prevent overshooting
-        max_angular_velocity = 2.0  # rad/s
+        max_angular_velocity = 1.5  # rad/s
         angular_velocity_z = np.clip(angular_velocity_z, -max_angular_velocity, max_angular_velocity)
-        print(f"Yaw error (radians): {yaw_error}, Angular velocity (rad/s): {angular_velocity_z}")
         
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
@@ -338,7 +419,7 @@ class ESI(BaseSample):
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
         # Set movement speed (adjust as needed)
-        top_speed = 2.5
+        top_speed = 1.0
         speed = 1.0  # meters per second
 
         # Convert waypoint to numpy array for distance calculation
@@ -352,9 +433,6 @@ class ESI(BaseSample):
         
         if speed > top_speed:
             speed = top_speed
-
-        print(f"Speed: {speed}")
-        print(f"previous speed: {self._previous_speed}")
         
         # Calculate linear velocity in world frame
         linear_velocity_world = np.array([forward_direction[0] * speed, 
@@ -379,8 +457,6 @@ class ESI(BaseSample):
             print(f"setting mission status to SUCCESS")
             return mission
         
-        # print(f"Robot current position: {robot_current_position}")
-        # done = check_at_waypoint()
 
         return mission
 
@@ -437,10 +513,23 @@ class ESI(BaseSample):
             return
 
 
-
     def custom_simulation_step(self, step_size):
         time = self._simulation_context.current_time
+        self.dt = self.dt + time - self.previous_time_
+
+        # Debug: Show simulation time occasionally
+        if int(time) != int(self.previous_time_):
+            print(f"Simulation time: {time:.2f}s, boxes available: {len(self._box_positions)}")
+            # Publish map integrity ratio every second
+            self._publish_map_integrity_ratio()
+
+        if self.dt > 4:
+            self.edit_map()
+            self.dt = 0.0
+
         self.step_mission(time)
+
+        self.previous_time_ = time
 
 
     async def setup_post_load(self):
@@ -452,6 +541,11 @@ class ESI(BaseSample):
 
         self._simulation_context = SimulationContext()
 
+        self.previous_time_ = self._simulation_context.current_time
+
+        # Initialize ROS2 publisher
+        self._setup_ros2_publisher()
+
         self.register_sim_step_callback()
         return
 
@@ -462,6 +556,10 @@ class ESI(BaseSample):
         self._misisons = []
         self._current_mission_number = 0
         self._all_missions_completed = False
+        
+        # Reset edit_map state
+        self._moved_boxes = set()
+        print("Reset edit_map state for clean restart")
         return
 
     async def setup_post_reset(self):
@@ -487,6 +585,13 @@ class ESI(BaseSample):
         return
 
     def world_cleanup(self):
+        # Cleanup ROS2 resources
+        if hasattr(self, '_ros2_node') and self._ros2_node:
+            try:
+                self._ros2_node.destroy_node()
+                print("ROS2 node destroyed")
+            except Exception as e:
+                print(f"Error destroying ROS2 node: {e}")
         return
 
     def get_integer_coordinates_in_square(self, square):
@@ -559,18 +664,117 @@ class ESI(BaseSample):
         
         return False  # No overlaps found
 
+    def check_distance_to_boxes(self, position: Tuple[float, float], min_distance: float) -> bool:
+        """
+        Check if a position is too close to any existing box.
+        
+        Args:
+            position: (x, y) position to check
+            min_distance: Minimum distance required to other boxes in meters
+            
+        Returns:
+            True if position is too close to any box, False otherwise
+        """
+        x, y = position
+        min_distance_squared = min_distance * min_distance  # Avoid sqrt for performance
+        
+        for prim_name, (box_pos, _) in self._box_positions.items():
+            box_x, box_y = box_pos
+            
+            # Calculate squared distance (faster than sqrt)
+            dx = x - box_x
+            dy = y - box_y
+            distance_squared = dx * dx + dy * dy
+            
+            # If squared distance is less than minimum squared, position is too close
+            if distance_squared < min_distance_squared:
+                return True
+        
+        return False
 
-    def get_random_not_free_space(self, free_spaces, seed=42):
+    def get_random_not_free_space(self, free_spaces, seed=42, min_distance_to_boxes=1.0):
         # Set seed for reproducible "random" placement
         np.random.seed(seed)
         
         do_continue = True
-        while do_continue:
+        max_attempts = 500  # Reduced from 1000 to prevent long delays
+        attempts = 0
+        
+        while do_continue and attempts < max_attempts:
+            random_space = (np.random.randint(2, 48), np.random.randint(2, 48))
+            sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
+        
+            # Check overlap with free spaces
+            overlaps_free_space = self.check_square_overlap(sq, free_spaces)
+            
+            # Check distance to other boxes
+            too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
+            
+            do_continue = overlaps_free_space or too_close_to_box
+            attempts += 1
+        
+        if attempts >= max_attempts:
+            print(f"Warning: Could not find valid position after {max_attempts} attempts, trying systematic search")
+            # Try systematic search instead of random
+            return self.get_systematic_position(free_spaces, min_distance_to_boxes)
+ 
+        return random_space, sq
+    
+    def get_systematic_position(self, free_spaces, min_distance_to_boxes=1.0):
+        """Systematic search for valid position when random search fails"""
+        print(f"Starting systematic search for position with {min_distance_to_boxes}m minimum distance")
+        
+        # Try positions in a grid pattern
+        for x in range(1, 49, 2):  # Step by 2 for efficiency
+            for y in range(1, 49, 2):
+                position = (x, y)
+                sq = square([x-1, y-1], [x+1, y+1], np.array([0.0, 1.0, 0.0]), "systematic")
+                
+                # Check overlap with free spaces
+                overlaps_free_space = self.check_square_overlap(sq, free_spaces)
+                
+                # Check distance to other boxes
+                too_close_to_box = self.check_distance_to_boxes(position, min_distance_to_boxes)
+                
+                if not overlaps_free_space and not too_close_to_box:
+                    print(f"Found systematic position: {position}")
+                    return position, sq
+        
+        # If systematic search fails, try with reduced distance
+        print("Systematic search failed, trying with reduced distance")
+        return self.get_systematic_position(free_spaces, min_distance_to_boxes * 0.7)
+    
+    def get_random_not_free_space_fallback(self, free_spaces, seed=42, min_distance_to_boxes=0.5):
+        """Fallback method with reduced distance requirements"""
+        np.random.seed(seed + 1000)  # Different seed for fallback
+        
+        do_continue = True
+        max_attempts = 200
+        attempts = 0
+        
+        while do_continue and attempts < max_attempts:
             random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
             sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
         
-            do_continue = self.check_square_overlap(sq, free_spaces)
- 
+            # Check overlap with free spaces
+            overlaps_free_space = self.check_square_overlap(sq, free_spaces)
+            
+            # Check distance to other boxes with reduced requirement
+            too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
+            
+            do_continue = overlaps_free_space or too_close_to_box
+            attempts += 1
+        
+        if attempts >= max_attempts:
+            print(f"Warning: Fallback also failed, using any non-free-space position")
+            # Last resort: just avoid free spaces
+            while attempts < max_attempts:
+                random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
+                sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
+                if not self.check_square_overlap(sq, free_spaces):
+                    break
+                attempts += 1
+        
         return random_space, sq
 
 
@@ -578,29 +782,109 @@ class ESI(BaseSample):
 
         # Define free space
         square_1 = square([15,15], [35,35], np.array([0.0, 1.0, 0]), "1")
-        free_spaces = []
+        self._free_spaces = []
+        self._box_positions = {}
+        self._moved_boxes = set()
         
         asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
         for i in range(1,2):
             await self.add_cube_at(eval(f"square_{i}"))
-            free_spaces.append(eval(f"square_{i}"))
+            self._free_spaces.append(eval(f"square_{i}"))
 
-        for i in range(50):
+        # Set fixed seed for reproducible box arrangement
+        random.seed(42)
+        
+        for i in range(20):
             prim_name = f"/map/WoodenCrate_A1_{i}"
-            random_pos, sq = self.get_random_not_free_space(free_spaces, seed=42 + i)
-            free_spaces.append(sq)
+            random_pos, sq = self.get_random_not_free_space(self._free_spaces, seed=42 + i, min_distance_to_boxes=3.0)
+            self._free_spaces.append(sq)
 
             # print("random_pos: ", random_pos)
             self.spawn_object(asset_path, prim_name)
             self.translate_object(prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
+            
+            # Apply fixed rotation to initial box placement (reproducible)
+            initial_rotation = random.uniform(0, 360)
+            self.rotate_object(prim_name, initial_rotation)
+            
             # Apply collision API to the prim
             prim = self._stage.GetPrimAtPath(prim_name)
             UsdPhysics.CollisionAPI.Apply(prim)
-
-
+            
+            # Store box position and square for later editing
+            self._box_positions[prim_name] = (random_pos, sq)
+        
+        print(f"Created {len(self._box_positions)} boxes for edit_map functionality (reproducible arrangement)")
 
         return
 
+    def edit_map(self) -> None:
+        """
+        Edit the map by moving a random box to a new location
+        """
+        # Check if we have any boxes to move
+        if not self._box_positions:
+            print(f"edit_map: No boxes available to move (box_positions is empty)")
+            return
         
+        # Get boxes that haven't been moved yet
+        unmoved_boxes = [name for name in self._box_positions.keys() if name not in self._moved_boxes]
+        
+        # If all boxes have been moved, reset the moved boxes set and continue
+        if not unmoved_boxes:
+            return
+            print("All boxes have been moved, resetting moved boxes list")
+            self._moved_boxes = set()
+            unmoved_boxes = list(self._box_positions.keys())
+        
+        # Pick a random box from unmoved boxes
+        prim_name = random.choice(unmoved_boxes)
+        old_pos, old_sq = self._box_positions[prim_name]
+        
+        print(f"Moving box {prim_name} from position {old_pos}")
+        
+        # Remove the old position from free spaces
+        # if old_sq in self._free_spaces:
+        #     self._free_spaces.remove(old_sq)
+        
+        # Find a new random position outside the free area with minimum distance to other boxes
+        import time
+        start_time = time.time()
+        
+        # Get current simulation time for deterministic seeds
+        current_time = self._simulation_context.current_time
+        
+        # Use deterministic seed based on box name and time for reproducible positioning
+        position_seed = hash(prim_name + str(int(current_time))) % 10000
+        new_pos, new_sq = self.get_random_not_free_space(self._free_spaces, seed=position_seed, min_distance_to_boxes=3.0)
+        end_time = time.time()
+        
+        # Generate reproducible rotation based on box name and time
+        # This ensures the same box gets the same rotation every time
+        rotation_seed = hash(prim_name + str(int(current_time))) % 1000
+        random.seed(rotation_seed)
+        random_rotation = random.uniform(0, 360)
+        
+        # Move the box to the new position
+        self.translate_object(prim_name, Gf.Vec3f(new_pos[0], new_pos[1], 0.0))
+        
+        # Apply random rotation to the box
+        self.rotate_object(prim_name, random_rotation)
+        
+        # Add the new position to free spaces
+        self._free_spaces.append(new_sq)
+        
+        # Update the box positions dictionary
+        self._box_positions[prim_name] = (new_pos, new_sq)
+        
+        # Mark this box as moved
+        self._moved_boxes.add(prim_name)
+        
+        print(f"Moved box {prim_name} to new position {new_pos} with rotation {random_rotation:.1f}° (took {end_time - start_time:.3f}s)")
+        print(f"Remaining unmoved boxes: {len(self._box_positions) - len(self._moved_boxes)}")
+        
+        # Publish updated map integrity ratio
+        self._publish_map_integrity_ratio()
 
+        

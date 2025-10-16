@@ -1,0 +1,18 @@
+# Core dependencies
+numpy>=1.26.0
+pyyaml>=6.0
+
+# ROS2 dependencies
+rclpy>=3.0.0
+std_msgs>=4.0.0
+
+# Isaac Sim dependencies (these may need to be installed in Isaac Sim environment)
+# omni-isaac-core
+# omni-isaac-core-utils
+# omni-physx
+# pxr
+# omni
+
+# Development dependencies for better IDE support
+pylsp-mypy>=1.0.0
+python-lsp-server[all]>=1.7.0
