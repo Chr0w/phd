@@ -38,6 +38,10 @@ from omni.isaac.core.objects import VisualCuboid, FixedCuboid
 
 from isaacsim.core.utils.stage import add_reference_to_stage
 from isaacsim.storage.native import get_assets_root_path
+try:
+    import yaml
+except Exception:
+    yaml = None
 
 # To link this repo with isaac sim:
 # cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive
@@ -201,18 +205,50 @@ class ESI(BaseSample):
         return Waypoint(x, y)
 
     def setup_missions(self):
-        mission_0 = Mission(0, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(7.5, 12.5))
-        mission_1 = Mission(1, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(22.5, 12.5))
-        mission_2 = Mission(2, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(22.5, 37.5))
-        mission_3 = Mission(3, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(37.5, 37.5))
-        mission_4 = Mission(4, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(37.5, 12.5))
-        
-        mission_0.set_status(StatusType.IN_PROGRESS)
+        # Load missions from YAML file in esi/missions/mission_1.yaml
+        missions_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "missions", "mission_1.yaml")
+        waypoints = []
+        try:
+            if yaml is not None:
+                with open(missions_file, "r") as f:
+                    data = yaml.safe_load(f)
+                    waypoints = data.get("waypoints", []) if data else []
+            else:
+                # Very small fallback parser: look for lines like '- [x, y]'
+                print("Warning: PyYAML not available, using fallback parser for missions file")
+                with open(missions_file, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("- [") and line.endswith("]"):
+                            content = line[3:-1]
+                            parts = [p.strip() for p in content.split(",")]
+                            if len(parts) >= 2:
+                                try:
+                                    x = float(parts[0])
+                                    y = float(parts[1])
+                                    waypoints.append([x, y])
+                                except Exception:
+                                    pass
+        except FileNotFoundError:
+            print(f"Missions file not found: {missions_file}")
+        except Exception as e:
+            print(f"Failed to load missions file {missions_file}: {e}")
+
+        missions = []
+        for i, wp in enumerate(waypoints):
+            try:
+                wx, wy = float(wp[0]), float(wp[1])
+            except Exception:
+                continue
+            missions.append(Mission(i, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(wx, wy)))
+
+        if missions:
+            missions[0].set_status(StatusType.IN_PROGRESS)
         self._current_mission_number = 0
         self._all_missions_completed = False
         self._new_mission = True
-        
-        return [mission_0, mission_1, mission_2, mission_3, mission_4]
+
+        return missions
 
 
     def setup_scene(self):
@@ -223,8 +259,14 @@ class ESI(BaseSample):
         add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
         self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
 
-        self.translate_object("/float_bot", Gf.Vec3f(7.5, 37.5, 0.0))
+        start_x = 25.0
+        start_y = 25.0
+        # Move robot to start position
+        self.translate_object("/float_bot", Gf.Vec3f(start_x, start_y, 0.0))
         # self.rotate_object("/float_bot", -90.0)
+
+        # Move map coordinate system so that (0,0) is at bottom left corner
+        self.translate_object("/float_bot/map", Gf.Vec3f(-start_x, -start_y, 0.0))
 
         self._misisons = self.setup_missions()        
 
@@ -245,7 +287,7 @@ class ESI(BaseSample):
         # Convert waypoint to numpy array for distance calculation
         waypoint_position = np.array([waypoint.x, waypoint.y, robot_current_position[2]]) 
         distance = np.linalg.norm(robot_current_position - waypoint_position)
-        return distance < 0.1
+        return distance < 0.3
 
 
     def move_towards_target(self, mission):
@@ -280,7 +322,7 @@ class ESI(BaseSample):
             angular_velocity_z = self._previous_angular_velocity_ + spin_direction * 0.01
 
         # Limit angular velocity to prevent overshooting
-        max_angular_velocity = 1.0  # rad/s
+        max_angular_velocity = 2.0  # rad/s
         angular_velocity_z = np.clip(angular_velocity_z, -max_angular_velocity, max_angular_velocity)
         print(f"Yaw error (radians): {yaw_error}, Angular velocity (rad/s): {angular_velocity_z}")
         
@@ -296,14 +338,14 @@ class ESI(BaseSample):
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
         # Set movement speed (adjust as needed)
-        top_speed = 1.5
-        speed = 1.5  # meters per second
+        top_speed = 2.5
+        speed = 1.0  # meters per second
 
         # Convert waypoint to numpy array for distance calculation
         distance = np.linalg.norm(robot_current_position - np.array([waypoint.x, waypoint.y, robot_current_position[2]]))
 
-        if distance < 2.5:
-            speed = max(speed * distance/2.5, 0.75)
+        if distance < 0.5:
+            speed = max(speed * distance/2.5, 0.5)
 
         if speed - self._previous_speed > 0.005: 
             speed = self._previous_speed + 0.005
@@ -535,17 +577,12 @@ class ESI(BaseSample):
     async def _on_add_objects_event_async(self):
 
         # Define free space
-        square_1 = square([5,0], [10,50], np.array([0.0, 1.0, 0]), "1")
-        square_2 = square([20,0], [25,50], np.array([0.0, 1.0, 0]), "2")
-        square_3 = square([35,0], [40,50], np.array([0.0, 1.0, 0]), "3")
-        square_4 = square([0,10], [50,15], np.array([0.0, 1.0, 0]), "4")
-        square_5 = square([0,35], [50,40], np.array([0.0, 1.0, 0]), "5")
-        square_6 = square([0,0], [1,1], np.array([0.0, 1.0, 0]), "6")
+        square_1 = square([15,15], [35,35], np.array([0.0, 1.0, 0]), "1")
         free_spaces = []
         
         asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
-        for i in range(1,7):
+        for i in range(1,2):
             await self.add_cube_at(eval(f"square_{i}"))
             free_spaces.append(eval(f"square_{i}"))
 
