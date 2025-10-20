@@ -10,52 +10,39 @@
 # Note: checkout the required tutorials at https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/overview.html
 
 
-import sys
-import os
-import random
-
-# Import our local robot utilities
-import isaac_sim_utils as isu
-import robot_utils
-from typing import List, Dict, Tuple, Optional
-
-# ROS2 imports
-try:
-    import rclpy
-    from rclpy.node import Node
-    from std_msgs.msg import Float32
-    ROS2_AVAILABLE = True
-except ImportError:
-    ROS2_AVAILABLE = False
-    print("Warning: ROS2 not available. Map integrity ratio publishing will be disabled.")
-
 # Add the current directory to Python path to find local modules
+import os
+import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-from pxr import UsdPhysics, PhysxSchema, Gf, PhysicsSchemaTools, UsdGeom
-import omni
-from omni.isaac.core import SimulationContext
 
-from isaacsim.examples.interactive.base_sample import BaseSample
-
-from omni.isaac.core.objects import DynamicCuboid
-import numpy as np
-from omni.physx.scripts import physicsUtils
-import omni.graph.core as og
-from isaacsim.core.prims import SingleRigidPrim
-from isaacsim.core.api.robots import Robot
-from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
+import isaac_sim_utils as isu
+import robot_utils
+import ros2_utils
 from robot_logger import RobotLogger
 from mission import Mission, MissionType, Waypoint, StatusType
-from omni.isaac.core.objects import VisualCuboid, FixedCuboid
 
+import random
+import numpy as np
+from typing import List, Dict, Tuple, Optional
+
+from pxr import UsdPhysics, PhysxSchema, Gf, PhysicsSchemaTools, UsdGeom
+import omni
+import omni.graph.core as og
+from omni.isaac.core import SimulationContext
+from omni.isaac.core.objects import DynamicCuboid
+from omni.physx.scripts import physicsUtils
+from omni.isaac.core.objects import VisualCuboid, FixedCuboid
+from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
+
+from isaacsim.examples.interactive.base_sample import BaseSample
+from isaacsim.core.prims import SingleRigidPrim
+from isaacsim.core.api.robots import Robot
 from isaacsim.storage.native import get_assets_root_path
-try:
-    import yaml
-except Exception:
-    yaml = None
+
+
 
 # To link this repo with isaac sim:
 # cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive
@@ -95,70 +82,19 @@ class ESI(BaseSample):
         self._box_positions: Dict[str, Tuple[Tuple[float, float], 'square']] = {}  # Dictionary mapping prim_name to (position, square) tuples
         self._moved_boxes: set[str] = set()  # Set of box names that have already been moved
         
-        # ROS2 initialization
-        self._ros2_initialized = False
-        self._map_integrity_publisher = None
-        if ROS2_AVAILABLE:
-            try:
-                if not rclpy.ok():
-                    rclpy.init()
-                self._ros2_initialized = True
-                print("ROS2 initialized successfully")
-            except Exception as e:
-                print(f"Failed to initialize ROS2: {e}")
-                self._ros2_initialized = False
+        # ROS2 publisher wrapper
+        self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
 
         return
 
-    def _setup_ros2_publisher(self):
-        """Setup ROS2 publisher for map integrity ratio"""
-        if not self._ros2_initialized or not ROS2_AVAILABLE:
-            print("ROS2 not available, skipping publisher setup")
-            return
-        
-        try:
-            # Create a simple node for publishing
-            import rclpy
-            from rclpy.node import Node
-            from std_msgs.msg import Float32
-            
-            # Create a minimal node for publishing
-            self._ros2_node = Node('esi_map_integrity_publisher')
-            self._map_integrity_publisher = self._ros2_node.create_publisher(
-                Float32, 
-                '/map_integrity_ratio', 
-                10
-            )
-            print("ROS2 publisher created for /map_integrity_ratio topic")
-        except Exception as e:
-            print(f"Failed to create ROS2 publisher: {e}")
-            self._map_integrity_publisher = None
-
     def _publish_map_integrity_ratio(self):
         """Publish the map integrity ratio (untouched boxes / total boxes)"""
-        if not self._map_integrity_publisher or not self._box_positions:
+        if not self._box_positions:
             return
-        
-        try:
-            total_boxes = len(self._box_positions)
-            untouched_boxes = len(self._box_positions) - len(self._moved_boxes)
-            
-            # Calculate ratio as float (0.0-1.0)
-            if total_boxes > 0:
-                integrity_ratio = float(untouched_boxes / total_boxes)
-            else:
-                integrity_ratio = 0.0
-            
-            # Create and publish message
-            msg = Float32()
-            msg.data = integrity_ratio
-            self._map_integrity_publisher.publish(msg)
-            
-            # Optional: print for debugging
-            print(f"Published map integrity ratio: {integrity_ratio:.3f} ({untouched_boxes}/{total_boxes} boxes untouched)")
-            
-        except Exception as e:
-            print(f"Failed to publish map integrity ratio: {e}")
+        total_boxes = len(self._box_positions)
+        untouched_boxes = ros2_utils.compute_untouched_boxes(self._box_positions, self._moved_boxes)
+        integrity_ratio = ros2_utils.compute_integrity_ratio(total_boxes, untouched_boxes)
+        self._map_integrity_pub.publish_ratio(integrity_ratio)
 
 
 
@@ -397,9 +333,6 @@ class ESI(BaseSample):
 
         self.previous_time_ = self._simulation_context.current_time
 
-        # Initialize ROS2 publisher
-        self._setup_ros2_publisher()
-
         self.register_sim_step_callback()
         return
 
@@ -440,12 +373,8 @@ class ESI(BaseSample):
 
     def world_cleanup(self):
         # Cleanup ROS2 resources
-        if hasattr(self, '_ros2_node') and self._ros2_node:
-            try:
-                self._ros2_node.destroy_node()
-                print("ROS2 node destroyed")
-            except Exception as e:
-                print(f"Error destroying ROS2 node: {e}")
+        if hasattr(self, '_map_integrity_pub') and self._map_integrity_pub is not None:
+            self._map_integrity_pub.shutdown()
         return
 
     def get_integer_coordinates_in_square(self, square):
