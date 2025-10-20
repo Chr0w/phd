@@ -42,6 +42,8 @@ from isaacsim.core.prims import SingleRigidPrim
 from isaacsim.core.api.robots import Robot
 from isaacsim.storage.native import get_assets_root_path
 
+import isaacsim.core.utils.mesh as mesh_utils
+import isaacsim.core.utils.stage as stage_utils
 
 
 # To link this repo with isaac sim:
@@ -371,12 +373,6 @@ class ESI(BaseSample):
         print("Post Reset")
         return
 
-    def world_cleanup(self):
-        # Cleanup ROS2 resources
-        if hasattr(self, '_map_integrity_pub') and self._map_integrity_pub is not None:
-            self._map_integrity_pub.shutdown()
-        return
-
     def get_integer_coordinates_in_square(self, square):
         """
         Get all integer coordinates within a square object.
@@ -528,10 +524,36 @@ class ESI(BaseSample):
         return self.get_systematic_position(free_spaces, min_distance_to_boxes * 0.7)
 
     async def _on_edit_world_event_async(self):
-        print("yea")
+        from isaacsim.core.utils.stage import get_current_stage
+        from isaacsim.core.utils.mesh import get_mesh_vertices_relative_to
+
+        stage = get_current_stage()
+        mesh_prim = stage.GetPrimAtPath("/map/WoodenCrate_A1_1/WoodenCrate_A2")
+        coord_prim = stage.GetPrimAtPath("/map")
+
+        if not mesh_prim or not mesh_prim.IsValid():
+            print("Mesh prim not found: /map/WoodenCrate_A1_1/WoodenCrate_A2")
+            return
+        if not coord_prim or not coord_prim.IsValid():
+            print("Coord prim not found: /map")
+            return
+
+        try:
+            vertices = get_mesh_vertices_relative_to(mesh_prim, coord_prim)
+            print(vertices)
+        except Exception as e:
+            print(f"Error fetching vertices: {e}")
 
 
     async def _on_add_objects_event_async(self):
+
+        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        prim_name = "/map/WoodenCrate_A1_1"
+        isu.spawn_object(asset_path, prim_name)
+        isu.translate_object(self._stage, prim_name, [2, 3, 0])
+
+
+        return
 
         # Define free space
         square_1 = square([15,15], [35,35], np.array([0.0, 1.0, 0]), "1")

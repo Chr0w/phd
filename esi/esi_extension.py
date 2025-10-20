@@ -74,7 +74,7 @@ class EsiExtensionUI(BaseSampleUITemplate):
     def _on_add_objects_event(self):
         print("Spawn objects button pressed")
         asyncio.ensure_future(self.sample._on_add_objects_event_async())
-        self.task_ui_elements["Add objects"].enabled = False
+        # self.task_ui_elements["Add objects"].enabled = False
         return
 
     def _on_edit_world_event(self):
