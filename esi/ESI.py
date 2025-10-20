@@ -13,6 +13,10 @@
 import sys
 import os
 import random
+
+# Import our local robot utilities
+import isaac_sim_utils as isu
+import robot_utils
 from typing import List, Dict, Tuple, Optional
 
 # ROS2 imports
@@ -33,13 +37,12 @@ if current_dir not in sys.path:
 from pxr import UsdPhysics, PhysxSchema, Gf, PhysicsSchemaTools, UsdGeom
 import omni
 from omni.isaac.core import SimulationContext
-from omni.physx.scripts import physicsUtils
-from omni.isaac.core.utils.stage import add_reference_to_stage
+
 from isaacsim.examples.interactive.base_sample import BaseSample
-from isaacsim.core.utils.viewports import set_camera_view
+
 from omni.isaac.core.objects import DynamicCuboid
 import numpy as np
-import omni.isaac.core.utils.prims as prim_utils
+from omni.physx.scripts import physicsUtils
 import omni.graph.core as og
 from isaacsim.core.prims import SingleRigidPrim
 from isaacsim.core.api.robots import Robot
@@ -48,7 +51,6 @@ from robot_logger import RobotLogger
 from mission import Mission, MissionType, Waypoint, StatusType
 from omni.isaac.core.objects import VisualCuboid, FixedCuboid
 
-from isaacsim.core.utils.stage import add_reference_to_stage
 from isaacsim.storage.native import get_assets_root_path
 try:
     import yaml
@@ -71,8 +73,6 @@ class square:
         self.y = (ur[1] + ll[1]) / 2
 
 class ESI(BaseSample):
-
-    
 
     def register_sim_step_callback(self):
         print("Registering sim step callback")
@@ -160,89 +160,9 @@ class ESI(BaseSample):
         except Exception as e:
             print(f"Failed to publish map integrity ratio: {e}")
 
-    def create_dome_light(self):
-        light_1 = prim_utils.create_prim(
-            "/World/dome_light",
-            "DomeLight",
-            position=np.array([0.0, 0.0, 20.0]),
-            attributes={
-                "inputs:intensity": 1e3,
-            }
-        )
 
-    def set_camera_view(self):
-        # set_camera_view(eye=[-8.0, -25, 30], target=[16.00, 16.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
-        set_camera_view(eye=[25.0, 25.0, 100], target=[25.00, 25.00, 0.00], camera_prim_path="/OmniverseKit_Persp")
 
-    def spawn_object(self, asset_path, prim_path):
-        add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
-        
-        # Remove physical properties to make objects non-physical
-        prim = self._stage.GetPrimAtPath(prim_path)
-        if prim:
-            # Remove RigidBodyAPI if it exists
-            rigid_body_api = UsdPhysics.RigidBodyAPI.Get(self._stage, prim_path)
-            if rigid_body_api:
-                rigid_body_api.GetPrim().RemoveAPI(UsdPhysics.RigidBodyAPI)
-            
-            # Remove CollisionAPI if it exists
-            collision_api = UsdPhysics.CollisionAPI.Get(self._stage, prim_path)
-            if collision_api:
-                collision_api.GetPrim().RemoveAPI(UsdPhysics.CollisionAPI)
-            
-            # Remove any physics schemas
-            physics_schemas = prim.GetAppliedSchemas()
-            for schema in physics_schemas:
-                if "Physics" in schema:
-                    prim.RemoveAPI(schema)
 
-    def translate_object(self, prim_path, translate):
-        box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
-        physicsUtils.set_or_add_translate_op(box_mesh, translate=translate)
-
-    def rotate_object(self, prim_path, rotation):
-        """
-        Rotate an object around the z-axis by a given yaw angle in degrees.
-        
-        Args:
-            prim_path (str): The path to the object to rotate
-            rotation (float): Yaw angle in degrees around the z-axis
-        """
-        rotation_quaternion = self.yaw_to_quaternion(rotation)
-        box_mesh = UsdGeom.Mesh.Get(self._stage, prim_path)
-        physicsUtils.set_or_add_orient_op(box_mesh, rotation_quaternion)
-
-    def yaw_to_quaternion(self, yaw_degrees):
-        """
-        Convert a yaw angle in degrees to a quaternion.
-        
-        Args:
-            yaw_degrees (float): Yaw angle in degrees around the z-axis
-            
-        Returns:
-            Gf.Quatd: USD quaternion object
-        """
-        # Convert degrees to radians
-        yaw_radians = np.radians(yaw_degrees)
-        half_yaw = yaw_radians / 2.0
-        
-        w = np.cos(half_yaw)
-        x = 0.0
-        y = 0.0
-        z = np.sin(half_yaw)
-        
-        return Gf.Quatd(w, x, y, z)
-    
-    def _quaternion_to_yaw_radians(self, quaternion):
-        """Convert quaternion to yaw angle in radians around Z-axis"""
-        # Extract quaternion components (w, x, y, z)
-        w, x, y, z = quaternion
-        
-        # Calculate yaw angle from quaternion
-        # yaw = atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
-        yaw_radians = np.arctan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
-        
-        return yaw_radians
 
     def create_waypoint(self, x, y):
         """
@@ -286,90 +206,28 @@ class ESI(BaseSample):
         # Return the Waypoint object
         return Waypoint(x, y)
 
-    def setup_missions(self):
-        # Load missions from YAML file in esi/missions/mission_1.yaml
-        missions_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "missions", "mission_1.yaml")
-        waypoints = []
-        try:
-            if yaml is not None:
-                with open(missions_file, "r") as f:
-                    data = yaml.safe_load(f)
-                    waypoints = data.get("waypoints", []) if data else []
-            else:
-                # Very small fallback parser: look for lines like '- [x, y]'
-                print("Warning: PyYAML not available, using fallback parser for missions file")
-                with open(missions_file, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith("- [") and line.endswith("]"):
-                            content = line[3:-1]
-                            parts = [p.strip() for p in content.split(",")]
-                            if len(parts) >= 2:
-                                try:
-                                    x = float(parts[0])
-                                    y = float(parts[1])
-                                    waypoints.append([x, y])
-                                except Exception:
-                                    pass
-        except FileNotFoundError:
-            print(f"Missions file not found: {missions_file}")
-        except Exception as e:
-            print(f"Failed to load missions file {missions_file}: {e}")
-
-        missions = []
-        for i, wp in enumerate(waypoints):
-            try:
-                wx, wy = float(wp[0]), float(wp[1])
-            except Exception:
-                continue
-            missions.append(Mission(i, MissionType.MOVE_TO_WAYPOINT, self.create_waypoint(wx, wy)))
-
-        if missions:
-            missions[0].set_status(StatusType.IN_PROGRESS)
-        self._current_mission_number = 0
-        self._all_missions_completed = False
-        self._new_mission = True
-
-        return missions
 
 
     def setup_scene(self):
-        self.create_dome_light()
+        isu.create_dome_light()
         self._world = self.get_world()
         self._stage = omni.usd.get_context().get_stage()
-        add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
-        add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
+        isu.add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
+        isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
         self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
 
         start_x = 25.0
         start_y = 25.0
         # Move robot to start position
-        self.translate_object("/float_bot", Gf.Vec3f(start_x, start_y, 0.0))
-        # self.rotate_object("/float_bot", -90.0)
+        isu.translate_object(self._stage, "/float_bot", Gf.Vec3f(start_x, start_y, 0.0))
+        # isu.rotate_object(self._stage, "/float_bot", -90.0)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
-        self.translate_object("/float_bot/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        isu.translate_object(self._stage, "/float_bot/map", Gf.Vec3f(-start_x, -start_y, 0.0))
 
-        self._misisons = self.setup_missions()        
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint)        
 
         return
-
-    async def disable_gravity(self):
-        stage = omni.usd.get_context().get_stage()
-        scene = UsdPhysics.Scene.Define(stage, "/physicsScene")
-        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(0)
-    
-        return
-
-
-    def check_if_at_waypoint(self, mission, time):
-        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
-        waypoint = mission.get_waypoint()
-        # Convert waypoint to numpy array for distance calculation
-        waypoint_position = np.array([waypoint.x, waypoint.y, robot_current_position[2]]) 
-        distance = np.linalg.norm(robot_current_position - waypoint_position)
-        return distance < 0.3
 
 
     def move_towards_target(self, mission):
@@ -384,7 +242,7 @@ class ESI(BaseSample):
         target_yaw_radians = np.arctan2(direction_vector[1], direction_vector[0])
         
         # Get current robot yaw from quaternion
-        current_yaw_radians = self._quaternion_to_yaw_radians(robot_current_orientation)
+        current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
         
         # Calculate the angular difference
         yaw_error = target_yaw_radians - current_yaw_radians
@@ -410,10 +268,6 @@ class ESI(BaseSample):
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
         self._robot.set_angular_velocity(angular_velocity)
-        
-        # Set linear velocity in the direction the robot is facing
-        # Get current robot yaw for forward direction
-        current_yaw_radians = self._quaternion_to_yaw_radians(robot_current_orientation)
         
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
@@ -451,7 +305,7 @@ class ESI(BaseSample):
     def step_move_to_waypoint(self, mission, time):
         self.move_towards_target(mission)
 
-        done = self.check_if_at_waypoint(mission, time)
+        done = robot_utils.check_if_at_waypoint(self._robot.get_world_pose, mission)
         if done:
             mission.set_status(StatusType.SUCCESS)
             print(f"setting mission status to SUCCESS")
@@ -536,8 +390,8 @@ class ESI(BaseSample):
         self._world = self.get_world()
         self._robot = self._world.scene.get_object("float_bot")
 
-        self.set_camera_view()
-        await self.disable_gravity()
+        isu.set_camera_view([25,25,50],[25,25,0])
+        await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
 
         self._simulation_context = SimulationContext()
 
@@ -580,7 +434,7 @@ class ESI(BaseSample):
         except Exception as e:
             print(f"Warning: failed to register sim step callback after reset: {e}")
 
-        self._misisons = self.setup_missions()
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint)
         print("Post Reset")
         return
 
@@ -743,39 +597,9 @@ class ESI(BaseSample):
         # If systematic search fails, try with reduced distance
         print("Systematic search failed, trying with reduced distance")
         return self.get_systematic_position(free_spaces, min_distance_to_boxes * 0.7)
-    
-    def get_random_not_free_space_fallback(self, free_spaces, seed=42, min_distance_to_boxes=0.5):
-        """Fallback method with reduced distance requirements"""
-        np.random.seed(seed + 1000)  # Different seed for fallback
-        
-        do_continue = True
-        max_attempts = 200
-        attempts = 0
-        
-        while do_continue and attempts < max_attempts:
-            random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
-            sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
-        
-            # Check overlap with free spaces
-            overlaps_free_space = self.check_square_overlap(sq, free_spaces)
-            
-            # Check distance to other boxes with reduced requirement
-            too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
-            
-            do_continue = overlaps_free_space or too_close_to_box
-            attempts += 1
-        
-        if attempts >= max_attempts:
-            print(f"Warning: Fallback also failed, using any non-free-space position")
-            # Last resort: just avoid free spaces
-            while attempts < max_attempts:
-                random_space = (np.random.randint(1, 49), np.random.randint(1, 49))
-                sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
-                if not self.check_square_overlap(sq, free_spaces):
-                    break
-                attempts += 1
-        
-        return random_space, sq
+
+    async def _on_edit_world_event_async(self):
+        print("yea")
 
 
     async def _on_add_objects_event_async(self):
@@ -801,12 +625,12 @@ class ESI(BaseSample):
             self._free_spaces.append(sq)
 
             # print("random_pos: ", random_pos)
-            self.spawn_object(asset_path, prim_name)
-            self.translate_object(prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
+            isu.spawn_object(asset_path, prim_name)
+            isu.translate_object(self._stage, prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
             
             # Apply fixed rotation to initial box placement (reproducible)
             initial_rotation = random.uniform(0, 360)
-            self.rotate_object(prim_name, initial_rotation)
+            isu.rotate_object(self._stage, prim_name, initial_rotation)
             
             # Apply collision API to the prim
             prim = self._stage.GetPrimAtPath(prim_name)
@@ -849,16 +673,13 @@ class ESI(BaseSample):
         #     self._free_spaces.remove(old_sq)
         
         # Find a new random position outside the free area with minimum distance to other boxes
-        import time
-        start_time = time.time()
         
         # Get current simulation time for deterministic seeds
-        current_time = self._simulation_context.current_time
+        current_time = isu.get_sim_time(self._simulation_context)
         
         # Use deterministic seed based on box name and time for reproducible positioning
         position_seed = hash(prim_name + str(int(current_time))) % 10000
         new_pos, new_sq = self.get_random_not_free_space(self._free_spaces, seed=position_seed, min_distance_to_boxes=3.0)
-        end_time = time.time()
         
         # Generate reproducible rotation based on box name and time
         # This ensures the same box gets the same rotation every time
@@ -867,10 +688,10 @@ class ESI(BaseSample):
         random_rotation = random.uniform(0, 360)
         
         # Move the box to the new position
-        self.translate_object(prim_name, Gf.Vec3f(new_pos[0], new_pos[1], 0.0))
+        isu.translate_object(self._stage, prim_name, Gf.Vec3f(new_pos[0], new_pos[1], 0.0))
         
         # Apply random rotation to the box
-        self.rotate_object(prim_name, random_rotation)
+        isu.rotate_object(self._stage, prim_name, random_rotation)
         
         # Add the new position to free spaces
         self._free_spaces.append(new_sq)
@@ -881,7 +702,7 @@ class ESI(BaseSample):
         # Mark this box as moved
         self._moved_boxes.add(prim_name)
         
-        print(f"Moved box {prim_name} to new position {new_pos} with rotation {random_rotation:.1f}° (took {end_time - start_time:.3f}s)")
+        # print(f"Moved box {prim_name} to new position {new_pos} with rotation {random_rotation:.1f}°")
         print(f"Remaining unmoved boxes: {len(self._box_positions) - len(self._moved_boxes)}")
         
         # Publish updated map integrity ratio

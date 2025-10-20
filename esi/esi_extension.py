@@ -77,6 +77,11 @@ class EsiExtensionUI(BaseSampleUITemplate):
         self.task_ui_elements["Add objects"].enabled = False
         return
 
+    def _on_edit_world_event(self):
+        print("Edit world button pressed")
+        asyncio.ensure_future(self.sample._on_edit_world_event_async())
+        return
+
     def post_reset_button_event(self):
         self.task_ui_elements["Add objects"].enabled = True
         return
@@ -103,3 +108,14 @@ class EsiExtensionUI(BaseSampleUITemplate):
 
             self.task_ui_elements["Add objects"] = btn_builder(**dict)
             self.task_ui_elements["Add objects"].enabled = False
+
+            edit_world_btn = {
+                "label": "Edit world",
+                "type": "button",
+                "text": "Edit world",
+                "tooltip": "Edit world",
+                "on_clicked_fn": self._on_edit_world_event,
+            }
+
+            self.task_ui_elements["Edit world"] = btn_builder(**edit_world_btn)
+            self.task_ui_elements["Edit world"].enabled = True
