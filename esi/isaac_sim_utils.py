@@ -4,7 +4,7 @@ from omni.isaac.core.utils.stage import add_reference_to_stage as _add_reference
 import omni.isaac.core.utils.prims as prim_utils
 import numpy as np
 from omni.physx.scripts import physicsUtils
-from pxr import UsdGeom, UsdPhysics, Gf
+from pxr import Usd, UsdGeom, UsdPhysics, Gf
 import omni
 
 def set_camera_view(eye=[0,0,0], target=[0,0,0], camera_prim_path="/OmniverseKit_Persp"):
@@ -72,6 +72,114 @@ async def disable_gravity(scene):
     scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
     scene.CreateGravityMagnitudeAttr().Set(0)
     return
+
+
+def _bbox_to_obb_components(stage, imageable):
+    """Return (center, axes[3,3], half_extents[3]) for the prim's local bound in world space.
+    axes rows are unit vectors in world frame.
+    """
+    import numpy as np
+    # Build a bbox cache with common purposes
+    purposes = [UsdGeom.Tokens.default_, UsdGeom.Tokens.render, UsdGeom.Tokens.proxy]
+    cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), purposes, useExtentsHint=True)
+    # Local bound gives an axis-aligned box in the prim's local space
+    local_bbox = cache.ComputeLocalBound(imageable.GetPrim())
+    rng = local_bbox.GetBox() if hasattr(local_bbox, "GetBox") else local_bbox.GetRange()
+    pmin = rng.GetMin()
+    pmax = rng.GetMax()
+    local_center = Gf.Vec3d((pmin[0] + pmax[0]) * 0.5, (pmin[1] + pmax[1]) * 0.5, (pmin[2] + pmax[2]) * 0.5)
+    local_half = Gf.Vec3d((pmax[0] - pmin[0]) * 0.5, (pmax[1] - pmin[1]) * 0.5, (pmax[2] - pmin[2]) * 0.5)
+
+    # World transform of the prim
+    xform_cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+    world_mat = xform_cache.GetLocalToWorldTransform(imageable.GetPrim())
+
+    # Center in world
+    center_world = world_mat.Transform(local_center)
+
+    # Axes are the columns of the upper-left 3x3 of the matrix
+    r0 = Gf.Vec3d(world_mat[0][0], world_mat[1][0], world_mat[2][0])
+    r1 = Gf.Vec3d(world_mat[0][1], world_mat[1][1], world_mat[2][1])
+    r2 = Gf.Vec3d(world_mat[0][2], world_mat[1][2], world_mat[2][2])
+    axes = [r0, r1, r2]
+    # Account for non-uniform scale by using column norms
+    scales = [r.GetLength() for r in axes]
+    axes_unit = [ (axes[i] / scales[i]) if scales[i] > 1e-12 else Gf.Vec3d(0.0,0.0,0.0) for i in range(3) ]
+    half_ext = [ local_half[i] * scales[i] for i in range(3) ]
+
+    axes_np = np.array([[axes_unit[0][0], axes_unit[0][1], axes_unit[0][2]],
+                        [axes_unit[1][0], axes_unit[1][1], axes_unit[1][2]],
+                        [axes_unit[2][0], axes_unit[2][1], axes_unit[2][2]]], dtype=float)
+    center_np = np.array([center_world[0], center_world[1], center_world[2]], dtype=float)
+    half_np = np.array([half_ext[0], half_ext[1], half_ext[2]], dtype=float)
+    return center_np, axes_np, half_np
+
+
+def _obb_overlap_sat(c1, A1, e1, c2, A2, e2):
+    """Separating Axis Theorem for two OBBs.
+    c*: (3,), A*: (3,3) rows are unit axes, e*: (3,).
+    """
+    import numpy as np
+    EPS = 1e-8
+    # Rotation from box2 into box1 coordinates
+    R = A1 @ A2.T
+    absR = np.abs(R) + EPS
+    # Translation in box1 frame
+    t = A1 @ (c2 - c1)
+
+    # Test axes L = A1[i]
+    for i in range(3):
+        ra = e1[i]
+        rb = e2[0]*absR[i,0] + e2[1]*absR[i,1] + e2[2]*absR[i,2]
+        if abs(t[i]) > ra + rb:
+            return False
+
+    # Test axes L = A2[i]
+    for i in range(3):
+        ra = e1[0]*absR[0,i] + e1[1]*absR[1,i] + e1[2]*absR[2,i]
+        rb = e2[i]
+        if abs(t[0]*R[0,i] + t[1]*R[1,i] + t[2]*R[2,i]) > ra + rb:
+            return False
+
+    # Test cross products A1[i] x A2[j]
+    for i in range(3):
+        for j in range(3):
+            ra = e1[(i+1)%3]*absR[(i+2)%3,j] + e1[(i+2)%3]*absR[(i+1)%3,j]
+            rb = e2[(j+1)%3]*absR[i,(j+2)%3] + e2[(j+2)%3]*absR[i,(j+1)%3]
+            lhs = abs(t[(i+2)%3]*R[(i+1)%3,j] - t[(i+1)%3]*R[(i+2)%3,j])
+            if lhs > ra + rb:
+                return False
+    return True
+
+
+def prims_overlap_obb(prim_path_a: str, prim_path_b: str) -> bool:
+    """Return True if two prims' oriented bounding boxes overlap (world frame)."""
+    stage = omni.usd.get_context().get_stage()
+    prim_a = stage.GetPrimAtPath(prim_path_a)
+    prim_b = stage.GetPrimAtPath(prim_path_b)
+    if not (prim_a and prim_a.IsValid() and prim_b and prim_b.IsValid()):
+        return False
+
+    def _first_mesh_descendant(prim):
+        """Return the prim itself if it has geometry; otherwise first Mesh descendant (depth-first)."""
+        if UsdGeom.Mesh(prim):
+            return prim
+        stack = list(prim.GetChildren())
+        while stack:
+            p = stack.pop(0)
+            if UsdGeom.Mesh(p):
+                return p
+            stack.extend(p.GetChildren())
+        return prim  # fallback
+
+    prim_a_geom = _first_mesh_descendant(prim_a)
+    prim_b_geom = _first_mesh_descendant(prim_b)
+
+    img_a = UsdGeom.Imageable(prim_a_geom)
+    img_b = UsdGeom.Imageable(prim_b_geom)
+    c1, A1, e1 = _bbox_to_obb_components(stage, img_a)
+    c2, A2, e2 = _bbox_to_obb_components(stage, img_b)
+    return _obb_overlap_sat(c1, A1, e1, c2, A2, e2)
 
 def get_sim_time(sim_context):
     return sim_context.current_time

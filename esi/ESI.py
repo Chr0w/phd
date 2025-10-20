@@ -72,12 +72,13 @@ class ESI(BaseSample):
         super().__init__()
 
         self._USER = os.environ.get("USER")
-        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/float_bot_3.usd"
-        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_2_for_import.usd"
+        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_1/mir_bot_1.usd"
+        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_3_for_import_rema1000_scene_1.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
         self.dt = 0.0
+        self.robot_prim_name_ = "mir_bot_1"
         
         # Map editing variables
         self._free_spaces: List['square'] = []  # List of square objects representing free areas
@@ -151,19 +152,19 @@ class ESI(BaseSample):
         self._world = self.get_world()
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
-        isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/float_bot")
-        self._robot = self._world.scene.add(Robot(prim_path="/float_bot", name="float_bot"))
+        isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/{self.robot_prim_name_}")
+        self._robot = self._world.scene.add(Robot(prim_path="/mir_bot_1", name=self.robot_prim_name_))
 
-        start_x = 25.0
-        start_y = 25.0
+        start_x = 5.0
+        start_y = 45.0
         # Move robot to start position
-        isu.translate_object(self._stage, "/float_bot", Gf.Vec3f(start_x, start_y, 0.0))
-        # isu.rotate_object(self._stage, "/float_bot", -90.0)
+        isu.translate_object(self._stage, "/mir_bot_1", Gf.Vec3f(start_x, start_y, 0.0))
+        # isu.rotate_object(self._stage, "/mir_bot_1", -90.0)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
-        isu.translate_object(self._stage, "/float_bot/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        # isu.translate_object(self._stage, "/mir_bot_1/map", Gf.Vec3f(-start_x, -start_y, 0.0))
 
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint)        
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
 
         return
 
@@ -326,9 +327,9 @@ class ESI(BaseSample):
 
     async def setup_post_load(self):
         self._world = self.get_world()
-        self._robot = self._world.scene.get_object("float_bot")
+        self._robot = self._world.scene.get_object("mir_bot_1")
 
-        isu.set_camera_view([25,25,50],[25,25,0])
+        isu.set_camera_view(eye=[5,25,50], target=[5,45,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
 
         self._simulation_context = SimulationContext()
@@ -355,7 +356,7 @@ class ESI(BaseSample):
         self._world = self.get_world()
         # Re-acquire the robot object after reset
         try:
-            self._robot = self._world.scene.get_object("float_bot")
+            self._robot = self._world.scene.get_object("mir_bot_1")
         except Exception:
             # If not found, leave it as is; spawn/setup_scene should recreate it
             self._robot = None
@@ -369,7 +370,7 @@ class ESI(BaseSample):
         except Exception as e:
             print(f"Warning: failed to register sim step callback after reset: {e}")
 
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint)
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
         print("Post Reset")
         return
 
@@ -539,6 +540,7 @@ class ESI(BaseSample):
             return
 
         try:
+            # Vertices in map frame
             vertices = get_mesh_vertices_relative_to(mesh_prim, coord_prim)
             print(vertices)
         except Exception as e:
@@ -547,11 +549,16 @@ class ESI(BaseSample):
 
     async def _on_add_objects_event_async(self):
 
-        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
-        prim_name = "/map/WoodenCrate_A1_1"
-        isu.spawn_object(asset_path, prim_name)
-        isu.translate_object(self._stage, prim_name, [2, 3, 0])
+        # asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/pallets/loaded_boxes_1.usd"
+        prim_name_1 = "/map/WoodenCrate_A1_1"
+        prim_name_2 = "/map/WoodenCrate_A1_2"
+        isu.spawn_object(asset_path, prim_name_1)
+        isu.spawn_object(asset_path, prim_name_2)
+        isu.translate_object(self._stage, prim_name_2, [10.0, 45.0, 0])
 
+        overlap = isu.prims_overlap_obb(prim_name_1, prim_name_2)
+        print(f"overlap: {overlap}")
 
         return
 

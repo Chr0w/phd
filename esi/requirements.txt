@@ -1,6 +1,7 @@
 # Core dependencies
 numpy>=1.26.0
 pyyaml>=6.0
+trimesh>=4.4.0
 
 # ROS2 dependencies
 rclpy>=3.0.0
