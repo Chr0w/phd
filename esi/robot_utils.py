@@ -119,3 +119,10 @@ def check_if_at_waypoint(robot_get_world_pose_fn, mission, distance_threshold=0.
     waypoint_position = np.array([waypoint.x, waypoint.y, robot_current_position[2]])
     distance = np.linalg.norm(robot_current_position - waypoint_position)
     return distance < distance_threshold
+
+
+def add_noise_to_array(array, noise_std=1.01):
+    """
+    Add noise to an array.
+    """
+    return array + np.random.normal(0, noise_std, array.shape)

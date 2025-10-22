@@ -72,13 +72,14 @@ class ESI(BaseSample):
         super().__init__()
 
         self._USER = os.environ.get("USER")
-        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_1/mir_bot_1.usd"
+        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2.usd"
+        self._import_ghost_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2_ghost.usd"
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_3_for_import_rema1000_scene_1.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
         self.dt = 0.0
-        self.robot_prim_name_ = "mir_bot_1"
+        self.robot_prim_name_ = "mir_bot_2"
         
         # Map editing variables
         self._free_spaces: List['square'] = []  # List of square objects representing free areas
@@ -125,7 +126,7 @@ class ESI(BaseSample):
                     prim_path=waypoint_prim_path,
                     name=waypoint_name,
                     position=np.array([x, y, 0.1]),  # Slightly above ground
-                    scale=np.array([0.5, 0.5, 0.1]),  # Flat cube
+                    scale=np.array([0.3, 0.3, 0.1]),  # Flat cube
                     color=np.array([0.5, 0.0, 0.8])  # Purple color
                 )
             )
@@ -153,16 +154,19 @@ class ESI(BaseSample):
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
         isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/{self.robot_prim_name_}")
-        self._robot = self._world.scene.add(Robot(prim_path="/mir_bot_1", name=self.robot_prim_name_))
+        isu.add_reference_to_stage(usd_path=self._import_ghost_usd_path, prim_path=f"/{self.robot_prim_name_}_ghost")
+        self._robot = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}", name=self.robot_prim_name_))
+        self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
 
-        start_x = 5.0
-        start_y = 45.0
+        start_x = 2.0
+        start_y = 48.0
         # Move robot to start position
-        isu.translate_object(self._stage, "/mir_bot_1", Gf.Vec3f(start_x, start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
         # isu.rotate_object(self._stage, "/mir_bot_1", -90.0)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
-        # isu.translate_object(self._stage, "/mir_bot_1/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.robot_prim_name_}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
 
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
 
@@ -207,6 +211,11 @@ class ESI(BaseSample):
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
         self._robot.set_angular_velocity(angular_velocity)
+
+        noisy_angular_velocity = angular_velocity # robot_utils.add_noise_to_array(angular_velocity, noise_std=0.1)
+        noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, 0.05)])
+
+        self._ghost.set_angular_velocity(noisy_angular_velocity)
         
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
@@ -234,6 +243,10 @@ class ESI(BaseSample):
         
         # Set the robot's linear velocity
         self._robot.set_linear_velocity(linear_velocity_world)
+
+        noisy_linear_velocity_world = linear_velocity_world # robot_utils.add_noise_to_array(linear_velocity_world, noise_std=0.1)
+        noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
+        self._ghost.set_linear_velocity(noisy_linear_velocity_world)
         self._previous_speed = speed
         self._previous_angular_velocity_ = angular_velocity_z
         
@@ -310,6 +323,9 @@ class ESI(BaseSample):
         time = self._simulation_context.current_time
         self.dt = self.dt + time - self.previous_time_
 
+        # Keep map stationary by applying inverse transformation
+        self._keep_map_stationary()
+
         # Debug: Show simulation time occasionally
         if int(time) != int(self.previous_time_):
             print(f"Simulation time: {time:.2f}s, boxes available: {len(self._box_positions)}")
@@ -324,10 +340,32 @@ class ESI(BaseSample):
 
         self.previous_time_ = time
 
+    def _keep_map_stationary(self):
+        """
+        Keep the map stationary by applying inverse transformation to counteract robot movement.
+        This is called every simulation step to maintain the map's world position.
+        """
+        try:
+            # Get robot's current world position
+            robot_position, _ = self._robot.get_world_pose()
+            
+            # Calculate the inverse translation to keep map stationary
+            # The map should appear at the same world position regardless of robot movement
+            inverse_translation = Gf.Vec3f(-robot_position[0], -robot_position[1], 0.0)
+            
+            # Apply the inverse transformation to the map
+            map_path = f"/{self.robot_prim_name_}/map"
+            isu.translate_object(self._stage, map_path, inverse_translation)
+            
+        except Exception as e:
+            # Silently handle errors to avoid spamming the console
+            pass
+
 
     async def setup_post_load(self):
         self._world = self.get_world()
-        self._robot = self._world.scene.get_object("mir_bot_1")
+        self._robot = self._world.scene.get_object(self.robot_prim_name_)
+        self._ghost = self._world.scene.get_object(f"{self.robot_prim_name_}_ghost")
 
         isu.set_camera_view(eye=[5,25,50], target=[5,45,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
@@ -356,7 +394,7 @@ class ESI(BaseSample):
         self._world = self.get_world()
         # Re-acquire the robot object after reset
         try:
-            self._robot = self._world.scene.get_object("mir_bot_1")
+            self._robot = self._world.scene.get_object(self.robot_prim_name_)
         except Exception:
             # If not found, leave it as is; spawn/setup_scene should recreate it
             self._robot = None
