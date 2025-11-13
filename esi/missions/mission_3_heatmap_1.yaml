@@ -2,8 +2,9 @@
 # Each entry is an [x, y] waypoint in meters
 # Matches the map in /home/user/isaac_sim_files/map_3_for_import_rema1000_scene_1.usd
 waypoints:
-  - [88.0, 41.0]
-  - [88.0, 25.0]
-  - [12.0, 25.0]
-  - [12.0, 8.0]
-  - [92.0, 8.0]
+  - [2.5, 45]
+  - [10, 44]
+  - [11, 33]
+  - [21, 33]
+  - [22, 27]
+  - [35, 26.5]

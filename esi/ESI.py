@@ -74,7 +74,7 @@ class ESI(BaseSample):
         self._USER = os.environ.get("USER")
         self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2.usd"
         self._import_ghost_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2_ghost.usd"
-        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/map_3_for_import_rema1000_scene_1.usd"
+        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/heatmap_1.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
@@ -158,8 +158,8 @@ class ESI(BaseSample):
         self._robot = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}", name=self.robot_prim_name_))
         self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
 
-        start_x = 2.0
-        start_y = 48.0
+        start_x = 8.0
+        start_y = 41.0
         # Move robot to start position
         isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
         isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
@@ -213,7 +213,7 @@ class ESI(BaseSample):
         self._robot.set_angular_velocity(angular_velocity)
 
         noisy_angular_velocity = angular_velocity # robot_utils.add_noise_to_array(angular_velocity, noise_std=0.1)
-        noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, 0.05)])
+        # noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, 0.05)])
 
         self._ghost.set_angular_velocity(noisy_angular_velocity)
         
@@ -221,7 +221,7 @@ class ESI(BaseSample):
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
         # Set movement speed (adjust as needed)
-        top_speed = 1.0
+        top_speed = 10.0
         speed = 1.0  # meters per second
 
         # Convert waypoint to numpy array for distance calculation
@@ -245,7 +245,7 @@ class ESI(BaseSample):
         self._robot.set_linear_velocity(linear_velocity_world)
 
         noisy_linear_velocity_world = linear_velocity_world # robot_utils.add_noise_to_array(linear_velocity_world, noise_std=0.1)
-        noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
+        # noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
         self._ghost.set_linear_velocity(noisy_linear_velocity_world)
         self._previous_speed = speed
         self._previous_angular_velocity_ = angular_velocity_z
@@ -367,7 +367,7 @@ class ESI(BaseSample):
         self._robot = self._world.scene.get_object(self.robot_prim_name_)
         self._ghost = self._world.scene.get_object(f"{self.robot_prim_name_}_ghost")
 
-        isu.set_camera_view(eye=[5,25,50], target=[5,45,0])
+        isu.set_camera_view(eye=[50,25,100], target=[50,25,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
 
         self._simulation_context = SimulationContext()
