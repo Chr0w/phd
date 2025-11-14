@@ -73,8 +73,8 @@ class ESI(BaseSample):
 
         self._USER = os.environ.get("USER")
         self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2.usd"
-        self._import_ghost_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2_ghost.usd"
-        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/heatmap_1.usd"
+        # self._import_ghost_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2_ghost.usd"
+        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/heatmap_w_pillars.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
@@ -154,15 +154,15 @@ class ESI(BaseSample):
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
         isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/{self.robot_prim_name_}")
-        isu.add_reference_to_stage(usd_path=self._import_ghost_usd_path, prim_path=f"/{self.robot_prim_name_}_ghost")
+        # isu.add_reference_to_stage(usd_path=self._import_ghost_usd_path, prim_path=f"/{self.robot_prim_name_}_ghost")
         self._robot = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}", name=self.robot_prim_name_))
-        self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
+        # self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
 
         start_x = 8.0
         start_y = 41.0
         # Move robot to start position
         isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
-        isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
+        # isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
         # isu.rotate_object(self._stage, "/mir_bot_1", -90.0)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
@@ -212,16 +212,45 @@ class ESI(BaseSample):
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
         self._robot.set_angular_velocity(angular_velocity)
 
-        noisy_angular_velocity = angular_velocity # robot_utils.add_noise_to_array(angular_velocity, noise_std=0.1)
-        # noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, 0.05)])
-
-        self._ghost.set_angular_velocity(noisy_angular_velocity)
+        max_deviation_rad = np.deg2rad(1.0)  # 1 degree in radians
+        noisy_angular_velocity = angular_velocity 
+        noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, max_deviation_rad)]) # about 1 deg
+        # self._ghost.set_angular_velocity(noisy_angular_velocity)
+        
+        # Clamp ghost orientation to never deviate more than ±1 deg from real robot
+        # ghost_position, ghost_orientation = self._ghost.get_world_pose()
+        # ghost_yaw_radians = robot_utils.quaternion_to_yaw_radians(ghost_orientation)
+        
+        # Calculate orientation difference
+        # orientation_diff = ghost_yaw_radians - current_yaw_radians
+        
+        # Normalize to [-π, π]
+        # while orientation_diff > np.pi:
+        #     orientation_diff -= 2 * np.pi
+        # while orientation_diff < -np.pi:
+        #     orientation_diff += 2 * np.pi
+        
+        # # Clamp to ±1 degree (≈0.0175 radians)
+        # if abs(orientation_diff) > max_deviation_rad:
+        #     # Clamp the difference to ±1 degree
+        #     clamped_diff = np.clip(orientation_diff, -max_deviation_rad, max_deviation_rad)
+        #     # Calculate clamped yaw
+        #     clamped_ghost_yaw = current_yaw_radians + clamped_diff
+        #     # Convert back to quaternion and set orientation
+        #     clamped_quaternion = robot_utils.yaw_degrees_to_quaternion(np.rad2deg(clamped_ghost_yaw))
+        #     # Convert Gf.Quatd to numpy array format if needed
+        #     if hasattr(clamped_quaternion, 'GetReal'):
+        #         # It's a Gf.Quatd, convert to numpy array [w, x, y, z]
+        #         clamped_quaternion = np.array([clamped_quaternion.GetReal(), clamped_quaternion.GetImaginary()[0], 
+        #                                        clamped_quaternion.GetImaginary()[1], clamped_quaternion.GetImaginary()[2]])
+        #     # Set the clamped orientation (preserving position)
+        #     self._ghost.set_world_pose(position=ghost_position, orientation=clamped_quaternion)
         
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
         # Set movement speed (adjust as needed)
-        top_speed = 10.0
+        top_speed = 2.0
         speed = 1.0  # meters per second
 
         # Convert waypoint to numpy array for distance calculation
@@ -244,9 +273,9 @@ class ESI(BaseSample):
         # Set the robot's linear velocity
         self._robot.set_linear_velocity(linear_velocity_world)
 
-        noisy_linear_velocity_world = linear_velocity_world # robot_utils.add_noise_to_array(linear_velocity_world, noise_std=0.1)
-        # noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
-        self._ghost.set_linear_velocity(noisy_linear_velocity_world)
+        noisy_linear_velocity_world = linear_velocity_world 
+        noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
+        # self._ghost.set_linear_velocity(noisy_linear_velocity_world)
         self._previous_speed = speed
         self._previous_angular_velocity_ = angular_velocity_z
         
@@ -365,7 +394,7 @@ class ESI(BaseSample):
     async def setup_post_load(self):
         self._world = self.get_world()
         self._robot = self._world.scene.get_object(self.robot_prim_name_)
-        self._ghost = self._world.scene.get_object(f"{self.robot_prim_name_}_ghost")
+        # self._ghost = self._world.scene.get_object(f"{self.robot_prim_name_}_ghost")
 
         isu.set_camera_view(eye=[50,25,100], target=[50,25,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
