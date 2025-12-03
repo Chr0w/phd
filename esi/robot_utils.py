@@ -49,7 +49,7 @@ def setup_missions(create_waypoint_func, missions_file_path=None):
         missions_file_path: Path to the missions YAML file (optional)
     
     Returns:
-        tuple: (missions_list, current_mission_number, all_missions_completed, new_mission)
+        tuple: (missions_list, current_mission_number, all_missions_completed, new_mission, start_position)
     """
     from mission import Mission, MissionType, StatusType
     
@@ -60,18 +60,33 @@ def setup_missions(create_waypoint_func, missions_file_path=None):
         missions_file = missions_file_path
         
     waypoints = []
+    start_position = [8.0, 41.0]  # Default start position
     try:
         if yaml is not None:
             with open(missions_file, "r") as f:
                 data = yaml.safe_load(f)
                 waypoints = data.get("waypoints", []) if data else []
+                # Read start_position from YAML if present
+                if data and "start_position" in data:
+                    start_position = data["start_position"]
         else:
             # Very small fallback parser: look for lines like '- [x, y]'
             print("Warning: PyYAML not available, using fallback parser for missions file")
             with open(missions_file, "r") as f:
                 for line in f:
                     line = line.strip()
-                    if line.startswith("- [") and line.endswith("]"):
+                    if line.startswith("start_position:"):
+                        # Parse start_position: [x, y]
+                        content = line.split(":", 1)[1].strip()
+                        if content.startswith("[") and content.endswith("]"):
+                            content = content[1:-1]
+                            parts = [p.strip() for p in content.split(",")]
+                            if len(parts) >= 2:
+                                try:
+                                    start_position = [float(parts[0]), float(parts[1])]
+                                except Exception:
+                                    pass
+                    elif line.startswith("- [") and line.endswith("]"):
                         content = line[3:-1]
                         parts = [p.strip() for p in content.split(",")]
                         if len(parts) >= 2:
@@ -100,7 +115,7 @@ def setup_missions(create_waypoint_func, missions_file_path=None):
     all_missions_completed = False
     new_mission = True
 
-    return missions, current_mission_number, all_missions_completed, new_mission
+    return missions, current_mission_number, all_missions_completed, new_mission, start_position
 
 def check_if_at_waypoint(robot_get_world_pose_fn, mission, distance_threshold=0.3):
     """

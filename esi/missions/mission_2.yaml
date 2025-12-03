@@ -1,9 +1,0 @@
-# Mission 1: square-spiral waypoints around start (25,25)
-# Each entry is an [x, y] waypoint in meters
-# Matches the map in /home/user/isaac_sim_files/map_3_for_import_rema1000_scene_1.usd
-waypoints:
-  - [88.0, 41.0]
-  - [88.0, 25.0]
-  - [12.0, 25.0]
-  - [12.0, 8.0]
-  - [92.0, 8.0]

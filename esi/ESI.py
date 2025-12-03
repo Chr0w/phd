@@ -73,7 +73,6 @@ class ESI(BaseSample):
 
         self._USER = os.environ.get("USER")
         self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2.usd"
-        # self._import_ghost_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2_ghost.usd"
         self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/heatmap_w_pillars.usd"
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
@@ -158,8 +157,10 @@ class ESI(BaseSample):
         self._robot = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}", name=self.robot_prim_name_))
         # self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
 
-        start_x = 8.0
-        start_y = 41.0
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_3_heatmap_1.yaml")
+        
+        start_x = float(start_position[0])
+        start_y = float(start_position[1])
         # Move robot to start position
         isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
         # isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
@@ -167,8 +168,6 @@ class ESI(BaseSample):
 
         # Move map coordinate system so that (0,0) is at bottom left corner
         isu.translate_object(self._stage, f"/{self.robot_prim_name_}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
-
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
 
         return
 
@@ -353,7 +352,7 @@ class ESI(BaseSample):
         self.dt = self.dt + time - self.previous_time_
 
         # Keep map stationary by applying inverse transformation
-        self._keep_map_stationary()
+        # self._keep_map_stationary()
 
         # Debug: Show simulation time occasionally
         if int(time) != int(self.previous_time_):
@@ -361,15 +360,15 @@ class ESI(BaseSample):
             # Publish map integrity ratio every second
             self._publish_map_integrity_ratio()
 
-        if self.dt > 4:
-            self.edit_map()
-            self.dt = 0.0
+        # if self.dt > 4:
+        #     self.edit_map()
+        #     self.dt = 0.0
 
         self.step_mission(time)
 
         self.previous_time_ = time
 
-    def _keep_map_stationary(self):
+    def _keep_map_stationary(self): # DELETE? 
         """
         Keep the map stationary by applying inverse transformation to counteract robot movement.
         This is called every simulation step to maintain the map's world position.
@@ -437,7 +436,16 @@ class ESI(BaseSample):
         except Exception as e:
             print(f"Warning: failed to register sim step callback after reset: {e}")
 
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
+        
+        # Move robot to start position from mission
+        start_x = float(start_position[0])
+        start_y = float(start_position[1])
+        isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
+        
+        # Move map coordinate system so that (0,0) is at bottom left corner
+        isu.translate_object(self._stage, f"/{self.robot_prim_name_}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        
         print("Post Reset")
         return
 
@@ -616,8 +624,7 @@ class ESI(BaseSample):
 
     async def _on_add_objects_event_async(self):
 
-        # asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
-        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/pallets/loaded_boxes_1.usd"
+        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
         prim_name_1 = "/map/WoodenCrate_A1_1"
         prim_name_2 = "/map/WoodenCrate_A1_2"
         isu.spawn_object(asset_path, prim_name_1)
@@ -627,7 +634,7 @@ class ESI(BaseSample):
         overlap = isu.prims_overlap_obb(prim_name_1, prim_name_2)
         print(f"overlap: {overlap}")
 
-        return
+        # return
 
         # Define free space
         square_1 = square([15,15], [35,35], np.array([0.0, 1.0, 0]), "1")
