@@ -60,7 +60,7 @@ def setup_missions(create_waypoint_func, missions_file_path=None):
         missions_file = missions_file_path
         
     waypoints = []
-    start_position = [8.0, 41.0]  # Default start position
+    start_position = []
     try:
         if yaml is not None:
             with open(missions_file, "r") as f:
@@ -69,33 +69,6 @@ def setup_missions(create_waypoint_func, missions_file_path=None):
                 # Read start_position from YAML if present
                 if data and "start_position" in data:
                     start_position = data["start_position"]
-        else:
-            # Very small fallback parser: look for lines like '- [x, y]'
-            print("Warning: PyYAML not available, using fallback parser for missions file")
-            with open(missions_file, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line.startswith("start_position:"):
-                        # Parse start_position: [x, y]
-                        content = line.split(":", 1)[1].strip()
-                        if content.startswith("[") and content.endswith("]"):
-                            content = content[1:-1]
-                            parts = [p.strip() for p in content.split(",")]
-                            if len(parts) >= 2:
-                                try:
-                                    start_position = [float(parts[0]), float(parts[1])]
-                                except Exception:
-                                    pass
-                    elif line.startswith("- [") and line.endswith("]"):
-                        content = line[3:-1]
-                        parts = [p.strip() for p in content.split(",")]
-                        if len(parts) >= 2:
-                            try:
-                                x = float(parts[0])
-                                y = float(parts[1])
-                                waypoints.append([x, y])
-                            except Exception:
-                                pass
     except FileNotFoundError:
         print(f"Missions file not found: {missions_file}")
     except Exception as e:
