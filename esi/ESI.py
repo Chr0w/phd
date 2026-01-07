@@ -20,6 +20,7 @@ if current_dir not in sys.path:
 
 import isaac_sim_utils as isu
 import robot_utils
+from setups import get_random_setup
 import ros2_utils
 from robot_logger import RobotLogger
 from mission import Mission, MissionType, Waypoint, StatusType
@@ -71,14 +72,29 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
-        self._USER = os.environ.get("USER")
-        self._import_robot_usd_path = f"/home/{self._USER}/isaac_sim_files/robots/mir_bot_2/mir_bot_2.usd"
-        self._import_map_usd_path = f"/home/{self._USER}/isaac_sim_files/heatmap_w_pillars.usd"
+
+        self.Setup = get_random_setup()
+
+
+        # Create waypoints
+        waypoints = [
+            Waypoint(x=10, y=10),
+            Waypoint(x=25, y=10),
+            Waypoint(x=40, y=10),
+            Waypoint(x=10, y=25),
+            Waypoint(x=25, y=25),
+            Waypoint(x=40, y=25),
+            Waypoint(x=10, y=40),
+            Waypoint(x=25, y=40),
+            Waypoint(x=40, y=40)
+        ]
+
+        self.Setup.set_waypoints(waypoints)
+
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
         self.dt = 0.0
-        self.robot_prim_name_ = "mir_bot_2"
         
         # Map editing variables
         self._free_spaces: List['square'] = []  # List of square objects representing free areas
@@ -151,23 +167,30 @@ class ESI(BaseSample):
         isu.create_dome_light()
         self._world = self.get_world()
         self._stage = omni.usd.get_context().get_stage()
-        isu.add_reference_to_stage(usd_path=self._import_map_usd_path, prim_path=f"/map")
-        isu.add_reference_to_stage(usd_path=self._import_robot_usd_path, prim_path=f"/{self.robot_prim_name_}")
-        # isu.add_reference_to_stage(usd_path=self._import_ghost_usd_path, prim_path=f"/{self.robot_prim_name_}_ghost")
-        self._robot = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}", name=self.robot_prim_name_))
-        # self._ghost = self._world.scene.add(Robot(prim_path=f"/{self.robot_prim_name_}_ghost", name=f"{self.robot_prim_name_}_ghost"))
+        isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
+        isu.add_reference_to_stage(usd_path=self.Setup.mission_file, prim_path=f"/{self.Setup.robot_prim_name}")
+        self._robot = self._world.scene.add(Robot(prim_path=f"/{self.Setup.robot_prim_name}", name=self.Setup.robot_prim_name))
 
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_3_heatmap_1.yaml")
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, waypoints=self.Setup.waypoints)
         
-        start_x = float(start_position[0])
-        start_y = float(start_position[1])
+        # Move robot to start position from mission (use first waypoint if start_position not provided)
+        if start_position and len(start_position) >= 2:
+            start_x = float(start_position[0])
+            start_y = float(start_position[1])
+        elif self.Setup.waypoints and len(self.Setup.waypoints) > 0:
+            # Use first waypoint as start position
+            start_x = float(self.Setup.waypoints[0].x)
+            start_y = float(self.Setup.waypoints[0].y)
+        else:
+            # Default start position
+            start_x = 0.0
+            start_y = 0.0
         # Move robot to start position
-        isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
-        # isu.translate_object(self._stage, f"/{self.robot_prim_name_}_ghost", Gf.Vec3f(start_x, start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}", Gf.Vec3f(start_x, start_y, 0.0))
         # isu.rotate_object(self._stage, "/mir_bot_1", -90.0)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
-        isu.translate_object(self._stage, f"/{self.robot_prim_name_}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
 
         return
 
@@ -214,36 +237,6 @@ class ESI(BaseSample):
         max_deviation_rad = np.deg2rad(1.0)  # 1 degree in radians
         noisy_angular_velocity = angular_velocity 
         noisy_angular_velocity += np.array([0.0, 0.0, np.random.normal(0.0, max_deviation_rad)]) # about 1 deg
-        # self._ghost.set_angular_velocity(noisy_angular_velocity)
-        
-        # Clamp ghost orientation to never deviate more than ±1 deg from real robot
-        # ghost_position, ghost_orientation = self._ghost.get_world_pose()
-        # ghost_yaw_radians = robot_utils.quaternion_to_yaw_radians(ghost_orientation)
-        
-        # Calculate orientation difference
-        # orientation_diff = ghost_yaw_radians - current_yaw_radians
-        
-        # Normalize to [-π, π]
-        # while orientation_diff > np.pi:
-        #     orientation_diff -= 2 * np.pi
-        # while orientation_diff < -np.pi:
-        #     orientation_diff += 2 * np.pi
-        
-        # # Clamp to ±1 degree (≈0.0175 radians)
-        # if abs(orientation_diff) > max_deviation_rad:
-        #     # Clamp the difference to ±1 degree
-        #     clamped_diff = np.clip(orientation_diff, -max_deviation_rad, max_deviation_rad)
-        #     # Calculate clamped yaw
-        #     clamped_ghost_yaw = current_yaw_radians + clamped_diff
-        #     # Convert back to quaternion and set orientation
-        #     clamped_quaternion = robot_utils.yaw_degrees_to_quaternion(np.rad2deg(clamped_ghost_yaw))
-        #     # Convert Gf.Quatd to numpy array format if needed
-        #     if hasattr(clamped_quaternion, 'GetReal'):
-        #         # It's a Gf.Quatd, convert to numpy array [w, x, y, z]
-        #         clamped_quaternion = np.array([clamped_quaternion.GetReal(), clamped_quaternion.GetImaginary()[0], 
-        #                                        clamped_quaternion.GetImaginary()[1], clamped_quaternion.GetImaginary()[2]])
-        #     # Set the clamped orientation (preserving position)
-        #     self._ghost.set_world_pose(position=ghost_position, orientation=clamped_quaternion)
         
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
@@ -274,7 +267,6 @@ class ESI(BaseSample):
 
         noisy_linear_velocity_world = linear_velocity_world 
         noisy_linear_velocity_world += np.array([np.random.normal(0.0, 0.05), np.random.normal(0.0, 0.05), 0.0])
-        # self._ghost.set_linear_velocity(noisy_linear_velocity_world)
         self._previous_speed = speed
         self._previous_angular_velocity_ = angular_velocity_z
         
@@ -351,9 +343,6 @@ class ESI(BaseSample):
         time = self._simulation_context.current_time
         self.dt = self.dt + time - self.previous_time_
 
-        # Keep map stationary by applying inverse transformation
-        # self._keep_map_stationary()
-
         # Debug: Show simulation time occasionally
         if int(time) != int(self.previous_time_):
             print(f"Simulation time: {time:.2f}s, boxes available: {len(self._box_positions)}")
@@ -368,32 +357,10 @@ class ESI(BaseSample):
 
         self.previous_time_ = time
 
-    def _keep_map_stationary(self): # DELETE? 
-        """
-        Keep the map stationary by applying inverse transformation to counteract robot movement.
-        This is called every simulation step to maintain the map's world position.
-        """
-        try:
-            # Get robot's current world position
-            robot_position, _ = self._robot.get_world_pose()
-            
-            # Calculate the inverse translation to keep map stationary
-            # The map should appear at the same world position regardless of robot movement
-            inverse_translation = Gf.Vec3f(-robot_position[0], -robot_position[1], 0.0)
-            
-            # Apply the inverse transformation to the map
-            map_path = f"/{self.robot_prim_name_}/map"
-            isu.translate_object(self._stage, map_path, inverse_translation)
-            
-        except Exception as e:
-            # Silently handle errors to avoid spamming the console
-            pass
-
 
     async def setup_post_load(self):
         self._world = self.get_world()
-        self._robot = self._world.scene.get_object(self.robot_prim_name_)
-        # self._ghost = self._world.scene.get_object(f"{self.robot_prim_name_}_ghost")
+        self._robot = self._world.scene.get_object(self.Setup.robot_prim_name)
 
         isu.set_camera_view(eye=[50,25,100], target=[50,25,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
@@ -422,7 +389,7 @@ class ESI(BaseSample):
         self._world = self.get_world()
         # Re-acquire the robot object after reset
         try:
-            self._robot = self._world.scene.get_object(self.robot_prim_name_)
+            self._robot = self._world.scene.get_object(self.Setup.robot_prim_name)
         except Exception:
             # If not found, leave it as is; spawn/setup_scene should recreate it
             self._robot = None
@@ -436,15 +403,24 @@ class ESI(BaseSample):
         except Exception as e:
             print(f"Warning: failed to register sim step callback after reset: {e}")
 
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, missions_file_path=f"/home/{self._USER}/phd/esi/missions/mission_2.yaml")
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, waypoints=self.Setup.waypoints)
         
-        # Move robot to start position from mission
-        start_x = float(start_position[0])
-        start_y = float(start_position[1])
-        isu.translate_object(self._stage, f"/{self.robot_prim_name_}", Gf.Vec3f(start_x, start_y, 0.0))
+        # Move robot to start position from mission (use first waypoint if start_position not provided)
+        if start_position and len(start_position) >= 2:
+            start_x = float(start_position[0])
+            start_y = float(start_position[1])
+        elif self.Setup.waypoints and len(self.Setup.waypoints) > 0:
+            # Use first waypoint as start position
+            start_x = float(self.Setup.waypoints[0].x)
+            start_y = float(self.Setup.waypoints[0].y)
+        else:
+            # Default start position
+            start_x = 0.0
+            start_y = 0.0
+        isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}", Gf.Vec3f(start_x, start_y, 0.0))
         
         # Move map coordinate system so that (0,0) is at bottom left corner
-        isu.translate_object(self._stage, f"/{self.robot_prim_name_}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
         
         print("Post Reset")
         return
@@ -547,7 +523,7 @@ class ESI(BaseSample):
         
         return False
 
-    def get_random_not_free_space(self, free_spaces, seed=42, min_distance_to_boxes=1.0):
+    def get_random_not_free_space(self, free_spaces, seed, min_distance_to_boxes=1.0):
         # Set seed for reproducible "random" placement
         np.random.seed(seed)
         
@@ -624,7 +600,7 @@ class ESI(BaseSample):
 
     async def _on_add_objects_event_async(self):
 
-        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        asset_path = f"/home/{self.Setup.user}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
         prim_name_1 = "/map/WoodenCrate_A1_1"
         prim_name_2 = "/map/WoodenCrate_A1_2"
         isu.spawn_object(asset_path, prim_name_1)
@@ -636,24 +612,27 @@ class ESI(BaseSample):
 
         # return
 
-        # Define free space
-        square_1 = square([15,15], [35,35], np.array([0.0, 1.0, 0]), "1")
+        # Define free space from waypoints
+        free_space_data = robot_utils.generate_free_space_from_waypoints(self.Setup.waypoints)
+        print(f"Generated {len(free_space_data)} free space rectangles")
         self._free_spaces = []
         self._box_positions = {}
         self._moved_boxes = set()
         
-        asset_path = f"/home/{self._USER}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
+        asset_path = f"/home/{self.Setup.user}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
-        for i in range(1,2):
-            await self.add_cube_at(eval(f"square_{i}"))
-            self._free_spaces.append(eval(f"square_{i}"))
+        # Create square objects from free space data
+        for sq_data in free_space_data:
+            sq = square(sq_data['ll'], sq_data['ur'], sq_data['color'], sq_data['name'])
+            await self.add_cube_at(sq)
+            self._free_spaces.append(sq)
 
         # Set fixed seed for reproducible box arrangement
-        random.seed(42)
+        random.seed(self.Setup.seed_nr)
         
         for i in range(20):
             prim_name = f"/map/WoodenCrate_A1_{i}"
-            random_pos, sq = self.get_random_not_free_space(self._free_spaces, seed=42 + i, min_distance_to_boxes=3.0)
+            random_pos, sq = self.get_random_not_free_space(self._free_spaces, seed=self.Setup.seed_nr + i, min_distance_to_boxes=3.0)
             self._free_spaces.append(sq)
 
             # print("random_pos: ", random_pos)
@@ -710,13 +689,13 @@ class ESI(BaseSample):
         current_time = isu.get_sim_time(self._simulation_context)
         
         # Use deterministic seed based on box name and time for reproducible positioning
-        position_seed = hash(prim_name + str(int(current_time))) % 10000
-        new_pos, new_sq = self.get_random_not_free_space(self._free_spaces, seed=position_seed, min_distance_to_boxes=3.0)
+        #position_seed = hash(prim_name + str(int(current_time))) % 10000
+        new_pos, new_sq = self.get_random_not_free_space(self._free_spaces, seed=self.Setup.seed_nr, min_distance_to_boxes=3.0)
         
         # Generate reproducible rotation based on box name and time
         # This ensures the same box gets the same rotation every time
-        rotation_seed = hash(prim_name + str(int(current_time))) % 1000
-        random.seed(rotation_seed)
+        #rotation_seed = hash(prim_name + str(int(current_time))) % 1000
+        random.seed(self.Setup.seed_nr)
         random_rotation = random.uniform(0, 360)
         
         # Move the box to the new position
