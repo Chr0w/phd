@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 from pxr import UsdGeom, Gf
 import omni
 import omni.isaac.core.utils.prims as prim_utils
@@ -192,4 +192,60 @@ def is_box_fit_in_occupiable_space(point: Tuple[float, float], box_circumscribed
             if dist_to_edge >= box_circumscribed_radius:
                 return True
     return False
+
+
+def get_polygon_bounds(poly: polygon) -> Tuple[float, float, float, float]:
+    """Get bounding box (min_x, min_y, max_x, max_y) of a polygon"""
+    if not poly.coordinates:
+        return (0, 0, 0, 0)
+    xs = [coord[0] for coord in poly.coordinates]
+    ys = [coord[1] for coord in poly.coordinates]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def try_position_in_polygon(
+    poly: polygon, 
+    box_circumscribed_radius: float,
+    min_distance_to_boxes: float,
+    check_distance_to_boxes_fn: Callable[[Tuple[float, float], float], bool],
+    max_attempts: int = 20
+) -> Optional[Tuple[float, float]]:
+    """
+    Try to find a valid position within a polygon.
+    
+    Args:
+        poly: Polygon to search within
+        box_circumscribed_radius: Radius of the box (distance from center to corner)
+        min_distance_to_boxes: Minimum distance to other boxes
+        check_distance_to_boxes_fn: Function to check if position is too close to boxes
+        max_attempts: Maximum number of attempts within this polygon
+        
+    Returns:
+        Tuple[float, float] if successful, None otherwise
+    """
+    min_x, min_y, max_x, max_y = get_polygon_bounds(poly)
+    
+    for _ in range(max_attempts):
+        # Generate random point within bounding box
+        x = np.random.uniform(min_x, max_x)
+        y = np.random.uniform(min_y, max_y)
+        position = (x, y)
+        
+        # Check if point is actually in polygon
+        if not is_point_in_polygon(position, poly):
+            continue
+        
+        # Check if box fits (considering circumscribed radius)
+        dist_to_edge = distance_to_polygon_edge(position, poly)
+        if dist_to_edge < box_circumscribed_radius:
+            continue
+        
+        # Check if not too close to other boxes
+        if check_distance_to_boxes_fn(position, min_distance_to_boxes):
+            continue
+        
+        # Valid position found
+        return position
+    
+    return None
 

@@ -13,6 +13,7 @@
 # Add the current directory to Python path to find local modules
 import os
 import sys
+import math
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
@@ -23,11 +24,11 @@ import robot_utils
 from setups import get_random_setup
 import ros2_utils
 from mission import Mission, MissionType, Waypoint, StatusType
-from polygons import polygon, is_box_fit_in_occupiable_space, add_polygon_at
+from polygons import polygon, is_box_fit_in_occupiable_space, add_polygon_at, try_position_in_polygon
 
 import random
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 from pxr import UsdPhysics, Gf, UsdGeom
 import omni
@@ -58,16 +59,17 @@ class ESI(BaseSample):
 
 
         # Create waypoints
-        waypoints = [
-            Waypoint(x=10, y=10),
-            Waypoint(x=25, y=10),
-            Waypoint(x=40, y=10),
-            Waypoint(x=10, y=25),
-            Waypoint(x=25, y=25),
-            Waypoint(x=40, y=25),
-            Waypoint(x=10, y=40),
-            Waypoint(x=25, y=40),
-            Waypoint(x=40, y=40)
+        self.waypoints = [
+            Waypoint(x=10, y=10, nr=1, connected_numbers=[2, 4, 5]),
+            Waypoint(x=25, y=10, nr=2, connected_numbers=[1, 3, 5]),
+            Waypoint(x=40, y=10, nr=3, connected_numbers=[2, 5, 6]),
+            Waypoint(x=10, y=25, nr=4, connected_numbers=[1, 5, 7]),
+            Waypoint(x=25, y=25, nr=5, connected_numbers=[1, 2, 3, 4, 6, 7, 8, 9]),
+            Waypoint(x=40, y=25, nr=6, connected_numbers=[3, 5, 9]),
+            Waypoint(x=10, y=40, nr=7, connected_numbers=[4, 5, 8]),
+            Waypoint(x=25, y=40, nr=8, connected_numbers=[5, 7, 9]),
+            Waypoint(x=40, y=40, nr=9, connected_numbers=[5, 6, 8]),
+
         ]
 
         polygon_color = np.array([1.0, 0.2, 0.2])
@@ -80,13 +82,74 @@ class ESI(BaseSample):
             polygon(coordinates=[(12, 35), (12, 27), (20, 27)], color=polygon_color, name="occupiable_space_polygon_6"),
             polygon(coordinates=[(35.4, 38), (27, 38), (27, 29.6)], color=polygon_color, name="occupiable_space_polygon_7"),
             polygon(coordinates=[(38, 35), (38, 27), (30, 27)], color=polygon_color, name="occupiable_space_polygon_8"),
-            polygon(coordinates=[(0, 0), (8, 0), (8, 50), (0, 50)], color=polygon_color, name="occupiable_space_polygon_9"),
-            polygon(coordinates=[(8, 0), (50, 0), (50, 8), (8, 8)], color=polygon_color, name="occupiable_space_polygon_10"),
-            polygon(coordinates=[(42, 8), (50, 8), (50, 50), (42, 50)], color=polygon_color, name="occupiable_space_polygon_11"),
-            polygon(coordinates=[(8, 42), (42, 42), (42, 50), (8, 50)], color=polygon_color, name="occupiable_space_polygon_12"),
+            polygon(coordinates=[(0, 0), (8, 0), (8, 25), (0, 25)], color=polygon_color, name="occupiable_space_polygon_9"),
+            polygon(coordinates=[(0, 25), (8, 25), (8, 50), (0, 50)], color=polygon_color, name="occupiable_space_polygon_10"),
+            polygon(coordinates=[(8, 0), (29, 0), (29, 8), (8, 8)], color=polygon_color, name="occupiable_space_polygon_11"),
+            polygon(coordinates=[(29, 0), (50, 0), (50, 8), (29, 8)], color=polygon_color, name="occupiable_space_polygon_12"),
+            polygon(coordinates=[(42, 8), (50, 8), (50, 29), (42, 29)], color=polygon_color, name="occupiable_space_polygon_13"),
+            polygon(coordinates=[(42, 29), (50, 29), (50, 50), (42, 50)], color=polygon_color, name="occupiable_space_polygon_14"),
+            polygon(coordinates=[(8, 42), (25, 42), (25, 50), (8, 50)], color=polygon_color, name="occupiable_space_polygon_15"),
+            polygon(coordinates=[(25, 42), (42, 42), (42, 50), (25, 50)], color=polygon_color, name="occupiable_space_polygon_16"),
         ]
 
-        self.Setup.set_waypoints(waypoints)
+        def pick_random_waypoint_path(waypoints: List[Waypoint], start_position: Tuple[float, float], n: int) -> List[Waypoint]:
+            """
+            Pick n random waypoints starting from the closest to start_position.
+            Each subsequent waypoint must be connected to the previous one.
+            
+            Args:
+                waypoints: List of all available waypoints
+                start_position: (x, y) starting position
+                n: Number of waypoints to pick
+                
+            Returns:
+                List of selected waypoints in order
+            """
+            if not waypoints or n <= 0:
+                return []
+            
+            # Create a dictionary for quick lookup by number
+            waypoint_dict = {wp.nr: wp for wp in waypoints}
+            
+            # Find the waypoint closest to start position
+            start_x, start_y = start_position
+            closest_waypoint = min(waypoints, key=lambda wp: np.sqrt((wp.x - start_x)**2 + (wp.y - start_y)**2))
+            
+            selected = [closest_waypoint]
+            current_waypoint = closest_waypoint
+            
+            # Pick n-1 more waypoints, each connected to the previous
+            for _ in range(n - 1):
+                # Get all connected waypoints (allow revisiting)
+                connected_nrs = current_waypoint.connected_numbers
+                available_connected = [
+                    waypoint_dict[nr] for nr in connected_nrs 
+                    if nr in waypoint_dict
+                ]
+                
+                if not available_connected:
+                    # No connected waypoints available, break
+                    break
+                
+                # Randomly pick one of the connected waypoints (can be a repeat)
+                next_waypoint = np.random.choice(available_connected)
+                selected.append(next_waypoint)
+                current_waypoint = next_waypoint
+            
+            return selected
+        
+        # Get starting position
+        if self.Setup.start_position and len(self.Setup.start_position) >= 2:
+            start_pos = (float(self.Setup.start_position[0]), float(self.Setup.start_position[1]))
+        else:
+            # Default to (0, 0) if no start position specified
+            start_pos = (0.0, 0.0)
+        
+        # Pick random waypoint path (adjust n as needed)
+        selected_waypoints = pick_random_waypoint_path(self.waypoints, start_pos, n=30)
+        
+        print([wp.nr for wp in selected_waypoints])
+        self.Setup.set_waypoints(selected_waypoints)
 
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
@@ -278,7 +341,7 @@ class ESI(BaseSample):
 
     def step_mission(self, time):
         if self._new_mission:
-            print(f"Starting mission nr {self._current_mission_number} (of {len(self._misisons)}")
+            print(f"Starting mission nr {self._current_mission_number} (of {len(self._misisons)})")
             self._new_mission = False
 
         # Check if we have completed all missions
@@ -326,7 +389,7 @@ class ESI(BaseSample):
             # Publish map integrity ratio every second
             self._publish_map_integrity_ratio()
 
-        if self.dt > 4:
+        if self.dt > 1:
             self.edit_map()
             self.dt = 0.0
 
@@ -475,7 +538,7 @@ class ESI(BaseSample):
         
         for i in range(20):
             prim_name = f"/map/WoodenCrate_A1_{i}"
-            random_pos = self.get_random_not_free_space(seed=self.Setup.seed_nr + i, min_distance_to_boxes=self.box_circumscribed_radius)
+            random_pos = self.get_random_not_free_space(seed=self.Setup.seed_nr + i, min_distance_to_boxes=2 * self.box_circumscribed_radius)
 
             isu.spawn_object(asset_path, prim_name)
             isu.translate_object(self._stage, prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
@@ -495,7 +558,8 @@ class ESI(BaseSample):
 
     def edit_map(self) -> None:
         """
-        Edit the map by moving a random box to a new location
+        Edit the map by moving a random box to a new location.
+        First picks a random occupiable polygon, then tries positions within it.
         """
         if not self._box_positions:
             print(f"edit_map: No boxes available to move (box_positions is empty)")
@@ -509,12 +573,46 @@ class ESI(BaseSample):
         old_pos = self._box_positions[prim_name]
         print(f"Moving box {prim_name} from position {old_pos}")
 
-        # Find a new random position in occupiable space with minimum distance to other boxes
-        new_pos = self.get_random_not_free_space(seed=self.Setup.seed_nr, min_distance_to_boxes=self.box_circumscribed_radius)
+        # Try to find a new position by randomly selecting polygons
+        new_pos = None
+        max_attempts = 100
         
-        # Generate reproducible rotation
-        random.seed(self.Setup.seed_nr)
-        random_rotation = random.uniform(0, 360)
+        # Track only the last 3 polygons used to avoid immediately repeating them
+        recent_polygons = []
+        
+        while new_pos is None:
+            # Get polygons that aren't in the last 3 used
+            available_polygons = [p for p in self.occupiable_space_polygons_ if p not in recent_polygons]
+            
+            # If all polygons are in recent list, use all polygons (shouldn't happen with 16+ polygons)
+            if not available_polygons:
+                available_polygons = self.occupiable_space_polygons_
+            
+            # Randomly pick a polygon from available ones (using numpy for better randomness)
+            poly = np.random.choice(available_polygons)
+            
+            # Add to recent list and keep only last 3
+            recent_polygons.append(poly)
+            if len(recent_polygons) > math.floor(len(self.occupiable_space_polygons_)*0.2):
+                recent_polygons.pop(0)
+            
+            new_pos = try_position_in_polygon(
+                poly, 
+                self.box_circumscribed_radius,
+                2 * self.box_circumscribed_radius,  # Need 2x radius to prevent overlap
+                self.check_distance_to_boxes,
+                max_attempts=max_attempts
+            )
+            
+            if new_pos is None:
+                max_attempts *= 2
+                print(f"No valid position found in polygon {poly.name}, increasing attempts to {max_attempts} and trying another polygon")
+        
+        # Generate random rotation (use box name for variation, but still somewhat random)
+        # Use hash of box name + current time to get different rotation per box
+        rotation_seed = hash(prim_name) % 10000
+        np.random.seed(rotation_seed)
+        random_rotation = np.random.uniform(0, 360)
         
         # Move the box to the new position
         isu.translate_object(self._stage, prim_name, Gf.Vec3f(new_pos[0], new_pos[1], 0.0))
