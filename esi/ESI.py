@@ -37,6 +37,7 @@ from omni.isaac.core.objects import DynamicCuboid
 from omni.physx.scripts import physicsUtils
 from omni.isaac.core.objects import VisualCuboid, FixedCuboid
 from omni.isaac.core.utils.rotations import quat_to_rot_matrix, rot_matrix_to_quat
+import omni.isaac.core.utils.prims as prim_utils
 
 from isaacsim.examples.interactive.base_sample import BaseSample
 from isaacsim.core.prims import SingleRigidPrim
@@ -62,6 +63,18 @@ class square:
         self.x = (ur[0] + ll[0]) / 2
         self.y = (ur[1] + ll[1]) / 2
 
+class polygon:
+    def __init__(self, coordinates, color, name):
+        """
+        Args:
+            coordinates: List of (x, y) tuples defining the polygon vertices
+            color: Color array for the polygon
+            name: Name identifier for the polygon
+        """
+        self.coordinates = coordinates  # List of (x, y) tuples
+        self.color = color
+        self.name = name
+
 class ESI(BaseSample):
 
     def register_sim_step_callback(self):
@@ -72,6 +85,8 @@ class ESI(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
+        # Box dimensions: 2x2m boxes, so circumscribed radius (center to corner) = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414m
+        self.box_circumscribed_radius = np.sqrt(2.0)  # For 2x2m box
 
         self.Setup = get_random_setup()
 
@@ -87,6 +102,22 @@ class ESI(BaseSample):
             Waypoint(x=10, y=40),
             Waypoint(x=25, y=40),
             Waypoint(x=40, y=40)
+        ]
+
+        polygon_color = np.array([1.0, 0.2, 0.2])
+        self.occupiable_space_polygons_ = [
+            polygon(coordinates=[(14.6, 12), (23, 12), (23, 20.4)], color=polygon_color, name="occupiable_space_polygon_1"),
+            polygon(coordinates=[(12, 15), (12, 23), (20, 23)], color=polygon_color, name="occupiable_space_polygon_2"),
+            polygon(coordinates=[(35.4, 12), (27, 12), (27, 20.4)], color=polygon_color, name="occupiable_space_polygon_3"),
+            polygon(coordinates=[(38, 15), (38, 23), (30, 23)], color=polygon_color, name="occupiable_space_polygon_4"),
+            polygon(coordinates=[(14.6, 38), (23, 38), (23, 29.6)], color=polygon_color, name="occupiable_space_polygon_5"),
+            polygon(coordinates=[(12, 35), (12, 27), (20, 27)], color=polygon_color, name="occupiable_space_polygon_6"),
+            polygon(coordinates=[(35.4, 38), (27, 38), (27, 29.6)], color=polygon_color, name="occupiable_space_polygon_7"),
+            polygon(coordinates=[(38, 35), (38, 27), (30, 27)], color=polygon_color, name="occupiable_space_polygon_8"),
+            polygon(coordinates=[(0, 0), (8, 0), (8, 50), (0, 50)], color=polygon_color, name="occupiable_space_polygon_9"),
+            polygon(coordinates=[(8, 0), (50, 0), (50, 8), (8, 8)], color=polygon_color, name="occupiable_space_polygon_10"),
+            polygon(coordinates=[(42, 8), (50, 8), (50, 50), (42, 50)], color=polygon_color, name="occupiable_space_polygon_11"),
+            polygon(coordinates=[(8, 42), (42, 42), (42, 50), (8, 50)], color=polygon_color, name="occupiable_space_polygon_12"),
         ]
 
         self.Setup.set_waypoints(waypoints)
@@ -173,8 +204,11 @@ class ESI(BaseSample):
 
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, waypoints=self.Setup.waypoints)
         
-        # Move robot to start position from mission (use first waypoint if start_position not provided)
-        if start_position and len(start_position) >= 2:
+        # Move robot to start position (priority: Setup.start_position > mission file start_position > first waypoint > default)
+        if self.Setup.start_position and len(self.Setup.start_position) >= 2:
+            start_x = float(self.Setup.start_position[0])
+            start_y = float(self.Setup.start_position[1])
+        elif start_position and len(start_position) >= 2:
             start_x = float(start_position[0])
             start_y = float(start_position[1])
         elif self.Setup.waypoints and len(self.Setup.waypoints) > 0:
@@ -349,9 +383,9 @@ class ESI(BaseSample):
             # Publish map integrity ratio every second
             self._publish_map_integrity_ratio()
 
-        # if self.dt > 4:
-        #     self.edit_map()
-        #     self.dt = 0.0
+        if self.dt > 4:
+            self.edit_map()
+            self.dt = 0.0
 
         self.step_mission(time)
 
@@ -405,8 +439,11 @@ class ESI(BaseSample):
 
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, waypoints=self.Setup.waypoints)
         
-        # Move robot to start position from mission (use first waypoint if start_position not provided)
-        if start_position and len(start_position) >= 2:
+        # Move robot to start position (priority: Setup.start_position > mission file start_position > first waypoint > default)
+        if self.Setup.start_position and len(self.Setup.start_position) >= 2:
+            start_x = float(self.Setup.start_position[0])
+            start_y = float(self.Setup.start_position[1])
+        elif start_position and len(start_position) >= 2:
             start_x = float(start_position[0])
             start_y = float(start_position[1])
         elif self.Setup.waypoints and len(self.Setup.waypoints) > 0:
@@ -466,6 +503,174 @@ class ESI(BaseSample):
             color=sq.color,
             ))
 
+    async def add_polygon_at(self, poly):
+        """
+        Add a polygon mesh to the world.
+        
+        Args:
+            poly: polygon instance with coordinates (list of (x, y) tuples), color, and name
+        """
+        stage = omni.usd.get_context().get_stage()
+        prim_path = f"/World/polygons/polygon_{poly.name}"
+        
+        # Create the mesh prim
+        mesh_prim = prim_utils.create_prim(
+            prim_path,
+            "Mesh",
+            position=np.array([0.0, 0.0, 0.0])  # Position will be handled by vertex coordinates
+        )
+        
+        # Get the mesh and set its geometry
+        mesh = UsdGeom.Mesh.Get(stage, prim_path)
+        
+        # Convert coordinates to 3D vertices (z=0 for flat polygon)
+        vertices = np.array([
+            [coord[0], coord[1], 0.0] for coord in poly.coordinates
+        ], dtype=np.float32)
+        
+        # Set points (vertices)
+        points_attr = mesh.CreatePointsAttr()
+        points_attr.Set(vertices)
+        
+        # Triangulate the polygon (fan triangulation from first vertex)
+        num_vertices = len(poly.coordinates)
+        if num_vertices < 3:
+            raise ValueError("Polygon must have at least 3 vertices")
+        
+        # Create triangles: (0, 1, 2), (0, 2, 3), (0, 3, 4), ...
+        face_vertex_indices = []
+        for i in range(1, num_vertices - 1):
+            face_vertex_indices.extend([0, i, i + 1])
+        
+        face_vertex_indices = np.array(face_vertex_indices, dtype=np.int32)
+        face_vertex_counts = np.array([3] * (num_vertices - 2), dtype=np.int32)
+        
+        face_vertex_indices_attr = mesh.CreateFaceVertexIndicesAttr()
+        face_vertex_indices_attr.Set(face_vertex_indices)
+        
+        face_vertex_counts_attr = mesh.CreateFaceVertexCountsAttr()
+        face_vertex_counts_attr.Set(face_vertex_counts)
+        
+        # Set color
+        color_attr = mesh.CreateDisplayColorAttr()
+        color_attr.Set([tuple(poly.color)])
+
+    def is_point_in_polygon(self, point: Tuple[float, float], poly: 'polygon') -> bool:
+        """
+        Check if a point is inside a polygon using ray casting algorithm.
+        
+        Args:
+            point: (x, y) tuple
+            poly: polygon object with coordinates attribute
+        
+        Returns:
+            bool: True if point is inside polygon, False otherwise
+        """
+        x, y = point
+        n = len(poly.coordinates)
+        inside = False
+        
+        p1x, p1y = poly.coordinates[0]
+        for i in range(1, n + 1):
+            p2x, p2y = poly.coordinates[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        
+        return inside
+    
+    def distance_to_polygon_edge(self, point: Tuple[float, float], poly: 'polygon') -> float:
+        """
+        Calculate the minimum distance from a point to any edge of a polygon.
+        
+        Args:
+            point: (x, y) tuple
+            poly: polygon object with coordinates attribute
+        
+        Returns:
+            float: Minimum distance to polygon edge (0 if point is outside polygon)
+        """
+        px, py = point
+        min_distance = float('inf')
+        n = len(poly.coordinates)
+        
+        for i in range(n):
+            p1 = poly.coordinates[i]
+            p2 = poly.coordinates[(i + 1) % n]
+            
+            x1, y1 = p1
+            x2, y2 = p2
+            
+            # Vector from p1 to p2
+            dx = x2 - x1
+            dy = y2 - y1
+            
+            # Vector from p1 to point
+            px1 = px - x1
+            py1 = py - y1
+            
+            # Project point onto line segment
+            dot = px1 * dx + py1 * dy
+            len_sq = dx * dx + dy * dy
+            
+            if len_sq == 0:
+                # Degenerate edge (p1 == p2)
+                dist = np.sqrt(px1 * px1 + py1 * py1)
+            else:
+                # Parameter t: 0 = at p1, 1 = at p2
+                t = max(0, min(1, dot / len_sq))
+                
+                # Closest point on line segment
+                closest_x = x1 + t * dx
+                closest_y = y1 + t * dy
+                
+                # Distance from point to closest point on segment
+                dist = np.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
+            
+            min_distance = min(min_distance, dist)
+        
+        return min_distance
+    
+    def is_point_in_occupiable_space(self, point: Tuple[float, float]) -> bool:
+        """
+        Check if a point is inside any of the occupiable space polygons.
+        
+        Args:
+            point: (x, y) tuple
+        
+        Returns:
+            bool: True if point is inside any occupiable space polygon, False otherwise
+        """
+        for poly in self.occupiable_space_polygons_:
+            if self.is_point_in_polygon(point, poly):
+                return True
+        return False
+    
+    def is_box_fit_in_occupiable_space(self, point: Tuple[float, float], box_circumscribed_radius: float) -> bool:
+        """
+        Check if a box (with given circumscribed radius) fits within any occupiable space polygon.
+        The box fits if the distance from the center to the nearest polygon edge is >= the circumscribed radius.
+        
+        Args:
+            point: (x, y) tuple - center of the box
+            box_circumscribed_radius: float - distance from center to corner of the box
+        
+        Returns:
+            bool: True if box fits within any occupiable space polygon, False otherwise
+        """
+        for poly in self.occupiable_space_polygons_:
+            # First check if center is inside the polygon
+            if self.is_point_in_polygon(point, poly):
+                # Then check if distance to edge is sufficient
+                dist_to_edge = self.distance_to_polygon_edge(point, poly)
+                if dist_to_edge >= box_circumscribed_radius:
+                    return True
+        return False
 
     def check_square_overlap(self, single_square, square_list):
         """
@@ -535,13 +740,17 @@ class ESI(BaseSample):
             random_space = (np.random.randint(2, 48), np.random.randint(2, 48))
             sq = square([random_space[0] -1, random_space[1] -1], [random_space[0] + 1, random_space[1] + 1], np.array([0.0, 1.0, 0.0]), "1")
         
+            # Check if box fits in occupiable space (considering box size and rotation)
+            box_fits = self.is_box_fit_in_occupiable_space(random_space, self.box_circumscribed_radius)
+            
             # Check overlap with free spaces
             overlaps_free_space = self.check_square_overlap(sq, free_spaces)
             
             # Check distance to other boxes
             too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
             
-            do_continue = overlaps_free_space or too_close_to_box
+            # Box must fit in occupiable space, not overlap free spaces, and not be too close to other boxes
+            do_continue = not box_fits or overlaps_free_space or too_close_to_box
             attempts += 1
         
         if attempts >= max_attempts:
@@ -561,13 +770,17 @@ class ESI(BaseSample):
                 position = (x, y)
                 sq = square([x-1, y-1], [x+1, y+1], np.array([0.0, 1.0, 0.0]), "systematic")
                 
+                # Check if box fits in occupiable space (considering box size and rotation)
+                box_fits = self.is_box_fit_in_occupiable_space(position, self.box_circumscribed_radius)
+                
                 # Check overlap with free spaces
                 overlaps_free_space = self.check_square_overlap(sq, free_spaces)
                 
                 # Check distance to other boxes
                 too_close_to_box = self.check_distance_to_boxes(position, min_distance_to_boxes)
                 
-                if not overlaps_free_space and not too_close_to_box:
+                # Box must fit in occupiable space, not overlap free spaces, and not be too close to other boxes
+                if box_fits and not overlaps_free_space and not too_close_to_box:
                     print(f"Found systematic position: {position}")
                     return position, sq
         
@@ -610,7 +823,6 @@ class ESI(BaseSample):
         overlap = isu.prims_overlap_obb(prim_name_1, prim_name_2)
         print(f"overlap: {overlap}")
 
-        # return
 
         # Define free space from waypoints
         free_space_data = robot_utils.generate_free_space_from_waypoints(self.Setup.waypoints)
@@ -621,11 +833,10 @@ class ESI(BaseSample):
         
         asset_path = f"/home/{self.Setup.user}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
 
-        # Create square objects from free space data
-        for sq_data in free_space_data:
-            sq = square(sq_data['ll'], sq_data['ur'], sq_data['color'], sq_data['name'])
-            await self.add_cube_at(sq)
-            self._free_spaces.append(sq)
+        # Create polygons for occupiable spaces
+        for p in self.occupiable_space_polygons_:
+            await self.add_polygon_at(p)
+
 
         # Set fixed seed for reproducible box arrangement
         random.seed(self.Setup.seed_nr)
