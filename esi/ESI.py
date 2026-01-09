@@ -158,7 +158,9 @@ class ESI(BaseSample):
         
         # Map editing variables
         self._box_positions: Dict[str, Tuple[float, float]] = {}
+        self._original_box_positions: Dict[str, Tuple[float, float]] = {}  # Store original positions
         self._moved_boxes: set[str] = set()
+        self._returned_boxes: set[str] = set()  # Track boxes that have been returned to original position
         
         # ROS2 publisher wrapper
         self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
@@ -385,11 +387,11 @@ class ESI(BaseSample):
 
         # Debug: Show simulation time occasionally
         if int(time) != int(self.previous_time_):
-            print(f"Simulation time: {time:.2f}s, boxes available: {len(self._box_positions)}")
+            print(f"Simulation time: {time:.2f}s")
             # Publish map integrity ratio every second
             self._publish_map_integrity_ratio()
 
-        if self.dt > 1:
+        if self.dt > 4:
             self.edit_map()
             self.dt = 0.0
 
@@ -415,6 +417,7 @@ class ESI(BaseSample):
         self._current_mission_number = 0
         self._all_missions_completed = False
         self._moved_boxes = set()
+        self._returned_boxes = set()
         print("Reset edit_map state for clean restart")
 
     async def setup_post_reset(self):
@@ -527,7 +530,9 @@ class ESI(BaseSample):
         asset_path = f"/home/{self.Setup.user}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
         
         self._box_positions = {}
+        self._original_box_positions = {}
         self._moved_boxes = set()
+        self._returned_boxes = set()
 
         # Create polygons for occupiable spaces
         for p in self.occupiable_space_polygons_:
@@ -553,6 +558,7 @@ class ESI(BaseSample):
             
             # Store box position for later editing
             self._box_positions[prim_name] = random_pos
+            self._original_box_positions[prim_name] = random_pos  # Store original position
         
         print(f"Created {len(self._box_positions)} boxes for edit_map functionality (reproducible arrangement)")
 
@@ -560,15 +566,48 @@ class ESI(BaseSample):
         """
         Edit the map by moving a random box to a new location.
         First picks a random occupiable polygon, then tries positions within it.
+        When all boxes have been moved, move them back to original positions one by one.
         """
         if not self._box_positions:
             print(f"edit_map: No boxes available to move (box_positions is empty)")
             return
         
         unmoved_boxes = [name for name in self._box_positions.keys() if name not in self._moved_boxes]
-        if not unmoved_boxes:
+        
+        # If we've started returning boxes, continue until all are returned
+        # OR if all boxes have been moved, start moving them back to original positions
+        if self._returned_boxes or not unmoved_boxes:
+            # Get boxes that haven't been returned yet (use original_box_positions as source of truth)
+            unreturned_boxes = [name for name in self._original_box_positions.keys() if name not in self._returned_boxes]
+            if not unreturned_boxes:
+                # All boxes have been returned, stop simulation (handled after last box is moved)
+                return
+            
+            # Pick a random box to return to original position
+            prim_name = random.choice(unreturned_boxes)
+            original_pos = self._original_box_positions[prim_name]
+            current_pos = self._box_positions[prim_name]
+            print(f"Returning box {prim_name} from position {current_pos} to original position {original_pos}")
+            
+            # Move box back to original position
+            isu.translate_object(self._stage, prim_name, Gf.Vec3f(original_pos[0], original_pos[1], 0.0))
+            
+            # Update position and mark as returned
+            self._box_positions[prim_name] = original_pos
+            self._returned_boxes.add(prim_name)
+            # Remove from moved_boxes since it's back in original position (counts as untouched again)
+            self._moved_boxes.discard(prim_name)
+            remaining = len(self._original_box_positions) - len(self._returned_boxes)
+            print(f"Remaining boxes to return: {remaining}")
+            self._publish_map_integrity_ratio()
+            
+            # If all boxes have been returned, stop the simulation
+            if remaining == 0:
+                print("All boxes returned to original positions - stopping simulation.")
+                self._world.stop()
             return
         
+        # Normal flow: move a box to a new position
         prim_name = random.choice(unmoved_boxes)
         old_pos = self._box_positions[prim_name]
         print(f"Moving box {prim_name} from position {old_pos}")
