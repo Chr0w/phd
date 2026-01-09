@@ -258,3 +258,74 @@ def generate_free_space_from_waypoints(waypoints, width=2.0, color=None):
                             })
     
     return squares
+
+
+class square:
+    def __init__(self, ll, ur, color, name):
+        self.ll = ll # Lower left
+        self.ur = ur # Upper right
+        self.color = color
+        self.name = name
+        self.x_length = ur[0] - ll[0]
+        self.y_length = ur[1] - ll[1]
+        self.x = (ur[0] + ll[0]) / 2
+        self.y = (ur[1] + ll[1]) / 2
+
+
+def check_square_overlap(single_square, square_list):
+    """
+    Check if a single square overlaps with any squares in a list.
+    
+    Args:
+        single_square: square object with ll and ur attributes
+        square_list: list of square objects with ll and ur attributes
+    
+    Returns:
+        bool: True if there is any overlap, False otherwise
+    """
+    # Extract coordinates from the single square
+    x1_min, y1_min = single_square.ll
+    x1_max, y1_max = single_square.ur
+    
+    # Check overlap with each square in the list
+    for square in square_list:
+        # Extract coordinates from the current square in the list
+        x2_min, y2_min = square.ll
+        x2_max, y2_max = square.ur
+        
+        # Check if rectangles overlap
+        if (x1_min < x2_max and x1_max > x2_min and 
+            y1_min < y2_max and y1_max > y2_min):
+            return True  # Found an overlap
+    
+    return False  # No overlaps found
+
+
+def get_integer_coordinates_in_square(square):
+    """
+    Get all integer coordinates within a square object.
+    
+    Args:
+        square: Square object with lower_left and upper_right attributes
+    
+    Returns:
+        list of tuples containing all integer coordinates within the square
+    """
+    # Extract coordinates from the square object
+    lower_left = square.ll
+    upper_right = square.ur
+    
+    x_min, y_min = lower_left
+    x_max, y_max = upper_right
+    
+    # Ensure we have valid coordinates
+    if x_min > x_max or y_min > y_max:
+        raise ValueError("Lower left coordinates must be less than upper right coordinates")
+    
+    # Get all integer coordinates within the square
+    coordinates = []
+    for x in range(int(x_min), int(x_max)):
+        for y in range(int(y_min), int(y_max)):
+            coordinates.append((x, y))
+    
+    return coordinates
