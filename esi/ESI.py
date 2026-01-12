@@ -21,7 +21,7 @@ if current_dir not in sys.path:
 
 import isaac_sim_utils as isu
 import robot_utils
-from setups import get_random_setup
+from setups import get_random_setup, get_setup_from_name
 import ros2_utils
 from mission import Mission, MissionType, Waypoint, StatusType
 from polygons import polygon, is_box_fit_in_occupiable_space, add_polygon_at, try_position_in_polygon
@@ -29,6 +29,11 @@ from polygons import polygon, is_box_fit_in_occupiable_space, add_polygon_at, tr
 import random
 import numpy as np
 from typing import List, Dict, Tuple, Optional
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 from pxr import UsdPhysics, Gf, UsdGeom
 import omni
@@ -48,6 +53,75 @@ class ESI(BaseSample):
         print("Registering sim step callback")
         self._world.add_physics_callback("sim_step", callback_fn=self.custom_simulation_step)
 
+    def _pick_random_waypoint_path(self, waypoints: List[Waypoint], start_position: Tuple[float, float], n: int) -> List[Waypoint]:
+        """
+        Pick n random waypoints starting from the closest to start_position.
+        Each subsequent waypoint must be connected to the previous one.
+        
+        Args:
+            waypoints: List of all available waypoints
+            start_position: (x, y) starting position
+            n: Number of waypoints to pick
+            
+        Returns:
+            List of selected waypoints in order
+        """
+        if not waypoints or n <= 0:
+            return []
+        
+        # Create a dictionary for quick lookup by number
+        waypoint_dict = {wp.nr: wp for wp in waypoints}
+        
+        # Find the waypoint closest to start position
+        start_x, start_y = start_position
+        closest_waypoint = min(waypoints, key=lambda wp: np.sqrt((wp.x - start_x)**2 + (wp.y - start_y)**2))
+        
+        selected = [closest_waypoint]
+        current_waypoint = closest_waypoint
+        
+        # Pick n-1 more waypoints, each connected to the previous
+        for _ in range(n - 1):
+            # Get all connected waypoints
+            connected_nrs = current_waypoint.connected_numbers
+            available_connected = [
+                waypoint_dict[nr] for nr in connected_nrs 
+                if nr in waypoint_dict
+            ]
+            
+            # Exclude the previous waypoint to avoid going back and forth
+            if len(selected) > 1:
+                previous_waypoint = selected[-2]  # Get the waypoint before current
+                available_connected = [
+                    wp for wp in available_connected 
+                    if wp != previous_waypoint
+                ]
+            
+            if not available_connected:
+                # No connected waypoints available, break
+                break
+            
+            # Randomly pick one of the connected waypoints (excluding previous)
+            next_waypoint = np.random.choice(available_connected)
+            selected.append(next_waypoint)
+            current_waypoint = next_waypoint
+        
+        return selected
+
+    def _generate_waypoint_path(self):
+        """
+        Generate waypoint path based on current start position.
+        Reads start position fresh and regenerates waypoints.
+        """
+        # Get starting position - crash if not provided
+        if not self.Setup.start_position or len(self.Setup.start_position) < 2:
+            raise ValueError("start_position must be provided in Setup. No fallbacks allowed.")
+        start_pos = (float(self.Setup.start_position[0]), float(self.Setup.start_position[1]))
+        
+        # Pick random waypoint path (adjust n as needed)
+        selected_waypoints = self._pick_random_waypoint_path(self.waypoints, start_pos, n=30)
+        
+        print([wp.nr for wp in selected_waypoints])
+        self.Setup.set_waypoints(selected_waypoints)
 
     def __init__(self) -> None:
         super().__init__()
@@ -55,8 +129,13 @@ class ESI(BaseSample):
         # Box dimensions: 2x2m boxes, so circumscribed radius (center to corner) = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414m
         self.box_circumscribed_radius = np.sqrt(2.0)  # For 2x2m box
 
-        self.Setup = get_random_setup()
-
+        # Read start position and seed from YAML file
+        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
+        # Get setup by name
+        self.Setup = get_setup_from_name("setup_1")
+        # Set the start position and seed on the setup
+        self.Setup._start_position = start_position
+        self.Setup._seed_nr = seed_nr
 
         # Create waypoints
         self.waypoints = [
@@ -92,64 +171,8 @@ class ESI(BaseSample):
             polygon(coordinates=[(25, 42), (42, 42), (42, 50), (25, 50)], color=polygon_color, name="occupiable_space_polygon_16"),
         ]
 
-        def pick_random_waypoint_path(waypoints: List[Waypoint], start_position: Tuple[float, float], n: int) -> List[Waypoint]:
-            """
-            Pick n random waypoints starting from the closest to start_position.
-            Each subsequent waypoint must be connected to the previous one.
-            
-            Args:
-                waypoints: List of all available waypoints
-                start_position: (x, y) starting position
-                n: Number of waypoints to pick
-                
-            Returns:
-                List of selected waypoints in order
-            """
-            if not waypoints or n <= 0:
-                return []
-            
-            # Create a dictionary for quick lookup by number
-            waypoint_dict = {wp.nr: wp for wp in waypoints}
-            
-            # Find the waypoint closest to start position
-            start_x, start_y = start_position
-            closest_waypoint = min(waypoints, key=lambda wp: np.sqrt((wp.x - start_x)**2 + (wp.y - start_y)**2))
-            
-            selected = [closest_waypoint]
-            current_waypoint = closest_waypoint
-            
-            # Pick n-1 more waypoints, each connected to the previous
-            for _ in range(n - 1):
-                # Get all connected waypoints (allow revisiting)
-                connected_nrs = current_waypoint.connected_numbers
-                available_connected = [
-                    waypoint_dict[nr] for nr in connected_nrs 
-                    if nr in waypoint_dict
-                ]
-                
-                if not available_connected:
-                    # No connected waypoints available, break
-                    break
-                
-                # Randomly pick one of the connected waypoints (can be a repeat)
-                next_waypoint = np.random.choice(available_connected)
-                selected.append(next_waypoint)
-                current_waypoint = next_waypoint
-            
-            return selected
-        
-        # Get starting position
-        if self.Setup.start_position and len(self.Setup.start_position) >= 2:
-            start_pos = (float(self.Setup.start_position[0]), float(self.Setup.start_position[1]))
-        else:
-            # Default to (0, 0) if no start position specified
-            start_pos = (0.0, 0.0)
-        
-        # Pick random waypoint path (adjust n as needed)
-        selected_waypoints = pick_random_waypoint_path(self.waypoints, start_pos, n=30)
-        
-        print([wp.nr for wp in selected_waypoints])
-        self.Setup.set_waypoints(selected_waypoints)
+        # Generate waypoint path based on current start position
+        self._generate_waypoint_path()
 
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
@@ -222,21 +245,11 @@ class ESI(BaseSample):
         """
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, start_position = robot_utils.setup_missions(self.create_waypoint, waypoints=self.Setup.waypoints)
         
-        # Move robot to start position (priority: Setup.start_position > mission file start_position > first waypoint > default)
-        if self.Setup.start_position and len(self.Setup.start_position) >= 2:
-            start_x = float(self.Setup.start_position[0])
-            start_y = float(self.Setup.start_position[1])
-        elif start_position and len(start_position) >= 2:
-            start_x = float(start_position[0])
-            start_y = float(start_position[1])
-        elif self.Setup.waypoints and len(self.Setup.waypoints) > 0:
-            # Use first waypoint as start position
-            start_x = float(self.Setup.waypoints[0].x)
-            start_y = float(self.Setup.waypoints[0].y)
-        else:
-            # Default start position
-            start_x = 0.0
-            start_y = 0.0
+        # Move robot to start position - crash if not provided
+        if not self.Setup.start_position or len(self.Setup.start_position) < 2:
+            raise ValueError("start_position must be provided in Setup. No fallbacks allowed.")
+        start_x = float(self.Setup.start_position[0])
+        start_y = float(self.Setup.start_position[1])
         # Move robot to start position
         isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}", Gf.Vec3f(start_x, start_y, 0.0))
         # isu.rotate_object(self._stage, "/mir_bot_1", -90.0)
@@ -251,6 +264,13 @@ class ESI(BaseSample):
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
         isu.add_reference_to_stage(usd_path=self.Setup.mission_file, prim_path=f"/{self.Setup.robot_prim_name}")
         self._robot = self._world.scene.add(Robot(prim_path=f"/{self.Setup.robot_prim_name}", name=self.Setup.robot_prim_name))
+
+        # Re-read start position and seed from YAML file (in case it changed) and regenerate waypoints
+        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
+        self.Setup = get_setup_from_name("setup_1")
+        self.Setup._start_position = start_position
+        self.Setup._seed_nr = seed_nr
+        self._generate_waypoint_path()
 
         self._setup_missions_and_robot_position()
 
@@ -432,6 +452,13 @@ class ESI(BaseSample):
         # Recreate the simulation context used by the sim step callback
         self._simulation_context = SimulationContext()
 
+        # Re-read start position and seed from YAML file (in case it changed) and regenerate waypoints
+        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
+        self.Setup = get_setup_from_name("setup_1")
+        self.Setup._start_position = start_position
+        self.Setup._seed_nr = seed_nr
+        self._generate_waypoint_path()
+
         # Ensure the sim-step callback is registered after a reset so missions get stepped
         try:
             self.register_sim_step_callback()
@@ -468,12 +495,13 @@ class ESI(BaseSample):
         return False
 
     def get_random_not_free_space(self, seed, min_distance_to_boxes):
-        np.random.seed(seed)
+        # Create a new random state for this box to ensure reproducibility
+        rng = np.random.RandomState(seed)
         max_attempts = 500
         attempts = 0
         
         while attempts < max_attempts:
-            random_space = (np.random.randint(2, 48), np.random.randint(2, 48))
+            random_space = (rng.randint(2, 48), rng.randint(2, 48))
         
             box_fits = is_box_fit_in_occupiable_space(random_space, self.box_circumscribed_radius, self.occupiable_space_polygons_)
             too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
@@ -539,17 +567,23 @@ class ESI(BaseSample):
             await add_polygon_at(p, self._stage)
 
         # Set fixed seed for reproducible box arrangement
+        np.random.seed(self.Setup.seed_nr)
         random.seed(self.Setup.seed_nr)
         
         for i in range(20):
             prim_name = f"/map/WoodenCrate_A1_{i}"
-            random_pos = self.get_random_not_free_space(seed=self.Setup.seed_nr + i, min_distance_to_boxes=2 * self.box_circumscribed_radius)
+            # Use a combined seed that includes both seed_nr and box index for reproducibility
+            box_seed = self.Setup.seed_nr * 1000 + i
+            np.random.seed(box_seed)
+            random_pos = self.get_random_not_free_space(seed=box_seed, min_distance_to_boxes=2 * self.box_circumscribed_radius)
 
             isu.spawn_object(asset_path, prim_name)
             isu.translate_object(self._stage, prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
             
             # Apply fixed rotation to initial box placement (reproducible)
-            initial_rotation = random.uniform(0, 360)
+            # Use numpy random for consistency with position generation
+            np.random.seed(box_seed + 10000)  # Offset to get different random sequence for rotation
+            initial_rotation = np.random.uniform(0, 360)
             isu.rotate_object(self._stage, prim_name, initial_rotation)
             
             # Apply collision API to the prim

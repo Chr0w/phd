@@ -40,6 +40,47 @@ def yaw_degrees_to_quaternion(yaw_degrees):
     return Gf.Quatd(w, x, y, z)
 
 
+def read_start_info_from_yaml(yaml_path=None):
+    """
+    Read start position and seed from YAML file.
+    This function reads the file fresh each time it's called.
+    
+    Args:
+        yaml_path: Path to the YAML file containing start position (defaults to /home/{USER}/devcontainer/ros2_ws/start_pos/start_pos.yaml)
+    
+    Returns:
+        tuple: (start_position, seed_nr) where start_position is [x, y] and seed_nr is int
+    """
+    if yaml_path is None:
+        user = os.environ.get("USER")
+        yaml_path = f"/home/{user}/devcontainer/ros2_ws/start_pos/start_pos.yaml"
+    if yaml is None:
+        raise ImportError("yaml module is required to read start position. Install it with: pip install pyyaml")
+    try:
+        with open(yaml_path, "r") as f:
+            start_pos_data = yaml.safe_load(f)
+            if start_pos_data and "robot_start_x" in start_pos_data and "robot_start_y" in start_pos_data:
+                x = float(start_pos_data["robot_start_x"])
+                y = float(start_pos_data["robot_start_y"])
+                start_position = [x, y]
+                
+                # Read seed
+                if "seed" in start_pos_data:
+                    seed_nr = int(start_pos_data["seed"])
+                else:
+                    raise ValueError(f"start_pos.yaml must contain 'seed' field. Got: {start_pos_data}")
+                
+                return start_position, seed_nr
+            else:
+                raise ValueError(f"start_pos.yaml must contain 'robot_start_x' and 'robot_start_y' fields. Got: {start_pos_data}")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Start position file not found: {yaml_path}") from e
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise RuntimeError(f"Failed to read start position from {yaml_path}: {e}") from e
+
+
 def setup_missions(create_waypoint_func, missions_file_path=None, waypoints=None):
     """
     Load missions from YAML file or use provided waypoints and create Mission objects.

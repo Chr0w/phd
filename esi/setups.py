@@ -47,6 +47,9 @@ class Setup():
     def set_waypoints(self, waypoints: list[Waypoint]):
         self._waypoints = waypoints
 
+def set_seed_nr(seed_nr: int):
+    self._seed_nr = seed_nr
+
 def get_all_setups(user: str = None):
     """
     Get all available setups.
@@ -68,21 +71,25 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/map_2_for_import.usd",
             seed_nr=1,
             robot_prim_name="mir_bot_2",
-            start_position=[10, 40]
         ),
-        # Add more setups here as needed
-        # Setup(
-        #     name="setup_2",
-        #     user=user,
-        #     mission_file_path=f"/home/{user}/isaac_sim_files/robots/other_robot/other_robot.usd",
-        #     map_usd_path=f"/home/{user}/isaac_sim_files/map_1_for_import.usd",
-        #     seed_nr=2,
-        #     robot_prim_name="other_robot"
-        # ),
     ]
     
     return setups
 
+
+def get_setup_from_name(name: str):
+    setups = get_all_setups()
+    for setup in setups:
+        if setup.name == name:
+            return setup
+    return None
+
+def get_setup_from_seed_nr(seed_nr: int):
+    setups = get_all_setups()
+    for setup in setups:
+        if setup.seed_nr == seed_nr:
+            return setup
+    return None
 
 def get_random_setup(user: str = None):
     """
