@@ -182,6 +182,7 @@ class ESI(BaseSample):
         # Map editing variables
         self._box_positions: Dict[str, Tuple[float, float]] = {}
         self._original_box_positions: Dict[str, Tuple[float, float]] = {}  # Store original positions
+        self._original_box_rotations: Dict[str, float] = {}  # Store original rotations
         self._moved_boxes: set[str] = set()
         self._returned_boxes: set[str] = set()  # Track boxes that have been returned to original position
         
@@ -196,6 +197,7 @@ class ESI(BaseSample):
         untouched_boxes = ros2_utils.compute_untouched_boxes(self._box_positions, self._moved_boxes)
         integrity_ratio = ros2_utils.compute_integrity_ratio(total_boxes, untouched_boxes)
         self._map_integrity_pub.publish_ratio(integrity_ratio)
+        # print(f"Map integrity ratio: {integrity_ratio}")
 
     def create_waypoint(self, x, y):
         """
@@ -438,6 +440,7 @@ class ESI(BaseSample):
         self._all_missions_completed = False
         self._moved_boxes = set()
         self._returned_boxes = set()
+        self._original_box_rotations = {}
         print("Reset edit_map state for clean restart")
 
     async def setup_post_reset(self):
@@ -559,6 +562,7 @@ class ESI(BaseSample):
         
         self._box_positions = {}
         self._original_box_positions = {}
+        self._original_box_rotations = {}
         self._moved_boxes = set()
         self._returned_boxes = set()
 
@@ -590,9 +594,10 @@ class ESI(BaseSample):
             prim = self._stage.GetPrimAtPath(prim_name)
             UsdPhysics.CollisionAPI.Apply(prim)
             
-            # Store box position for later editing
+            # Store box position and rotation for later editing
             self._box_positions[prim_name] = random_pos
             self._original_box_positions[prim_name] = random_pos  # Store original position
+            self._original_box_rotations[prim_name] = initial_rotation  # Store original rotation
         
         print(f"Created {len(self._box_positions)} boxes for edit_map functionality (reproducible arrangement)")
 
@@ -620,11 +625,13 @@ class ESI(BaseSample):
             # Pick a random box to return to original position
             prim_name = random.choice(unreturned_boxes)
             original_pos = self._original_box_positions[prim_name]
+            original_rotation = self._original_box_rotations[prim_name]
             current_pos = self._box_positions[prim_name]
             print(f"Returning box {prim_name} from position {current_pos} to original position {original_pos}")
             
-            # Move box back to original position
+            # Move box back to original position and rotation
             isu.translate_object(self._stage, prim_name, Gf.Vec3f(original_pos[0], original_pos[1], 0.0))
+            isu.rotate_object(self._stage, prim_name, original_rotation)
             
             # Update position and mark as returned
             self._box_positions[prim_name] = original_pos
