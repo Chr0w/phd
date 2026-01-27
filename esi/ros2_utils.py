@@ -46,6 +46,8 @@ class MapIntegrityPublisher:
 			msg = Float32()  # type: ignore[name-defined]
 			msg.data = float(ratio)
 			self._publisher.publish(msg)  # type: ignore[union-attr]
+			# Spin the node once to actually send the message
+			rclpy.spin_once(self._node, timeout_sec=0.0)  # type: ignore[name-defined]
 		except Exception:
 			# Swallow exceptions to avoid crashing the sim due to ROS issues
 			pass
@@ -62,11 +64,13 @@ class MapIntegrityPublisher:
 def compute_integrity_ratio(total_boxes: int, untouched_boxes: int) -> float:
 	if total_boxes <= 0:
 		return 0.0
+
+	#added_and_removed = (total_boxes - untouched_boxes)*2
 	return max(0.0, min(1.0, float(untouched_boxes) / float(total_boxes)))
 
 
 def compute_untouched_boxes(box_name_to_position: dict, moved_box_names: set) -> int:
-	"""Helper to compute untouched box count from tracking structures."""
+	"""Helper to compute untouched box c ount from tracking structures."""
 	try:
 		return len(set(box_name_to_position.keys()) - set(moved_box_names))
 	except Exception:
