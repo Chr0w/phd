@@ -1,0 +1,9 @@
+# Mission 3: heatmap test (8, 41)
+# Each entry is an [x, y] waypoint in meters
+start_position: [8, 41]
+waypoints:
+  - [88.0, 41.0]
+  - [88.0, 25.0]
+  - [12.0, 25.0]
+  - [12.0, 8.0]
+  - [92.0, 8.0]

@@ -1,27 +1,21 @@
 import numpy as np
 from typing import Tuple, Optional, Callable
-from pxr import UsdGeom, Gf, UsdShade
+from pxr import UsdGeom, Gf
 import omni
 import omni.isaac.core.utils.prims as prim_utils
 
 
 class polygon:
-    def __init__(self, coordinates, color, name, alpha=1.0):
+    def __init__(self, coordinates, color, name):
         """
         Args:
             coordinates: List of (x, y) tuples defining the polygon vertices
             color: Color array for the polygon
             name: Name identifier for the polygon
-            alpha: Alpha/opacity value (0.0 = fully transparent, 1.0 = fully opaque, default: 1.0)
         """
         self.coordinates = coordinates  # List of (x, y) tuples
         self.color = color
         self.name = name
-        self.alpha = float(alpha)  # Clamp to valid range [0, 1]
-        if self.alpha < 0.0:
-            self.alpha = 0.0
-        elif self.alpha > 1.0:
-            self.alpha = 1.0
 
 
 def is_point_in_polygon(point: Tuple[float, float], poly: polygon) -> bool:
@@ -121,7 +115,7 @@ async def add_polygon_at(poly: polygon, stage):
     mesh_prim = prim_utils.create_prim(
         prim_path,
         "Mesh",
-        position=np.array([0.0, 0.0, 0.0])  # Position will be handled by vertex coordinates
+        position=np.array([0.0, 0.0, 0.0]),  # Position will be handled by vertex coordinates
     )
     
     # Get the mesh and set its geometry
@@ -155,50 +149,10 @@ async def add_polygon_at(poly: polygon, stage):
     face_vertex_counts_attr = mesh.CreateFaceVertexCountsAttr()
     face_vertex_counts_attr.Set(face_vertex_counts)
     
-    # Normalize color from [0-255] to [0-1] range if needed
-    if isinstance(poly.color, (list, np.ndarray)):
-        if isinstance(poly.color, np.ndarray):
-            color_list = poly.color.tolist()[:3] if len(poly.color) >= 3 else [1.0, 1.0, 1.0]
-        else:
-            color_list = poly.color[:3] if len(poly.color) >= 3 else [1.0, 1.0, 1.0]
-        
-        if max(color_list) > 1.0:
-            color_normalized = [float(c) / 255.0 for c in color_list]
-        else:
-            color_normalized = [float(c) for c in color_list]
-    else:
-        color_normalized = [1.0, 1.0, 1.0]
-    
-    # Set display color (for fallback/backwards compatibility)
+    # Set color
     color_attr = mesh.CreateDisplayColorAttr()
-    color_attr.Set([tuple(color_normalized)])
+    color_attr.Set([tuple(poly.color)])
     
-    # Create a material with opacity for proper transparency
-    material_path = f"{prim_path}/material"
-    material = UsdShade.Material.Define(stage, material_path)
-    
-    # Create a preview surface shader
-    shader = UsdShade.Shader.Define(stage, f"{material_path}/preview_surface")
-    shader.CreateIdAttr("UsdPreviewSurface")
-    
-    # Set the diffuse color
-    color_input = shader.CreateInput("diffuseColor", UsdShade.Tokens.float3)
-    color_input.Set(Gf.Vec3f(color_normalized[0], color_normalized[1], color_normalized[2]))
-    
-    # Set the opacity (alpha) - this controls transparency
-    opacity_input = shader.CreateInput("opacity", UsdShade.Tokens.float)
-    opacity_input.Set(float(poly.alpha))
-    
-    # Enable transparency by setting opacity threshold (optional, helps with rendering)
-    if poly.alpha < 1.0:
-        opacity_threshold_input = shader.CreateInput("opacityThreshold", UsdShade.Tokens.float)
-        opacity_threshold_input.Set(0.01)  # Small threshold for better transparency rendering
-    
-    # Connect the shader to the material
-    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
-    
-    # Bind the material to the mesh
-    UsdShade.MaterialBindingAPI(mesh).Bind(material)
 
 
 def is_point_in_occupiable_space(point: Tuple[float, float], occupiable_space_polygons: list) -> bool:

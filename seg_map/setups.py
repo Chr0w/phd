@@ -3,7 +3,7 @@ import random
 from mission import Mission, MissionType, Waypoint, StatusType
 
 class Setup():
-    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_2", start_position: list = None) -> None:
+    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None) -> None:
         self._name = name
         self._user = user
         self._mission_file = mission_file_path
@@ -47,8 +47,8 @@ class Setup():
     def set_waypoints(self, waypoints: list[Waypoint]):
         self._waypoints = waypoints
 
-def set_seed_nr(seed_nr: int):
-    self._seed_nr = seed_nr
+    def set_seed_nr(self, seed_nr: int):
+        self._seed_nr = seed_nr
 
 def get_all_setups(user: str = None):
     """
@@ -68,9 +68,9 @@ def get_all_setups(user: str = None):
             name="setup_1",
             user=user,
             mission_file_path=f"/home/{user}/isaac_sim_files/robots/mir_bot_3/mir_bot_3.usd",
-            map_usd_path=f"/home/{user}/isaac_sim_files/maps/esi_test/map_2_for_import.usd",
+            map_usd_path=f"/home/{user}/isaac_sim_files/maps/seg_map_1/seg_map_1.usd",
             seed_nr=1,
-            robot_prim_name="mir_bot_2",
+            robot_prim_name="mir_bot_3",
         ),
     ]
     

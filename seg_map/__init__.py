@@ -9,7 +9,5 @@
 
 # NOTE: Import here your extension examples to be propagated to ISAAC SIM Extensions startup
 
-from isaacsim.examples.interactive.user_examples.ESI import ESI
-from isaacsim.examples.interactive.user_examples.esi_extension import EsiExtension
 from isaacsim.examples.interactive.user_examples.seg_map.SegMap import SegMap
 from isaacsim.examples.interactive.user_examples.seg_map.seg_map_extension import SegMapExtension
