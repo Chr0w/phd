@@ -277,6 +277,7 @@ class SegMap(BaseSample):
         self._setup_missions_and_robot_position()
 
     def move_towards_target(self, mission):
+        # return
         robot_current_position, robot_current_orientation = self._robot.get_world_pose()
         waypoint = mission.get_waypoint()
         
@@ -364,6 +365,7 @@ class SegMap(BaseSample):
         print(f"On pause...")
 
     def step_mission(self, time):
+        #return
         if self._new_mission:
             print(f"Starting mission nr {self._current_mission_number} (of {len(self._misisons)})")
             self._new_mission = False
@@ -423,6 +425,7 @@ class SegMap(BaseSample):
     async def setup_post_load(self):
         self._world = self.get_world()
         self._robot = self._world.scene.get_object(self.Setup.robot_prim_name)
+        self.stop_motion()
 
         isu.set_camera_view(eye=[50,25,100], target=[50,25,0])
         await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
