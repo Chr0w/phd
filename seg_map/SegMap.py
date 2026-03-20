@@ -290,6 +290,19 @@ class SegMap(BaseSample):
         
         # Get current robot yaw from quaternion
         current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
+
+        # Force planar orientation every step: zero roll/pitch, keep current yaw.
+        half_yaw = current_yaw_radians / 2.0
+        planar_orientation = np.array([
+            np.cos(half_yaw),  # w
+            0.0,               # x (roll)
+            0.0,               # y (pitch)
+            np.sin(half_yaw),  # z (yaw)
+        ])
+        self._robot.set_world_pose(
+            position=robot_current_position,
+            orientation=planar_orientation,
+        )
         
         # Calculate the angular difference
         yaw_error = target_yaw_radians - current_yaw_radians
@@ -316,6 +329,8 @@ class SegMap(BaseSample):
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
         self._robot.set_angular_velocity(angular_velocity)
         
+
+        print(f"Current yaw: {current_yaw_radians}, Target yaw: {target_yaw_radians}, Yaw error: {yaw_error}")
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
@@ -577,7 +592,7 @@ class SegMap(BaseSample):
         np.random.seed(self.Setup.seed_nr)
         random.seed(self.Setup.seed_nr)
         
-        for i in range(20):
+        for i in range(10):
             prim_name = f"/map/WoodenCrate_A1_{i}"
             # Use a combined seed that includes both seed_nr and box index for reproducibility
             box_seed = self.Setup.seed_nr * 1000 + i
