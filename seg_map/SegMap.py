@@ -126,6 +126,8 @@ class SegMap(BaseSample):
     def __init__(self) -> None:
         super().__init__()
 
+        self.manual_control = True
+
         # Box dimensions: 2x2m boxes, so circumscribed radius (center to corner) = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414m
         self.box_circumscribed_radius = np.sqrt(2.0)  # For 2x2m box
 
@@ -188,6 +190,8 @@ class SegMap(BaseSample):
         
         # ROS2 publisher wrapper
         self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
+        self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
+        self._teleop_warned_unavailable = False
 
     def _publish_map_integrity_ratio(self):
         """Publish the map integrity ratio (untouched boxes / total boxes)"""
@@ -376,6 +380,34 @@ class SegMap(BaseSample):
         self._robot.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
         self._robot.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
 
+    def _step_manual_control(self):
+        if not self._teleop_sub.ok:
+            if not self._teleop_warned_unavailable:
+                print("manual_control is enabled but ROS2 /cmd_vel subscriber is not available.")
+                self._teleop_warned_unavailable = True
+            self.stop_motion()
+            return
+
+        self._teleop_sub.spin_once()
+        linear_x, linear_y, angular_z = self._teleop_sub.get_latest_command(stale_timeout_sec=0.5)
+
+        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
+
+        # Convert base-frame cmd_vel to world-frame velocity, then apply directly.
+        cos_yaw = np.cos(current_yaw_radians)
+        sin_yaw = np.sin(current_yaw_radians)
+        linear_velocity_world = np.array([
+            linear_x * cos_yaw - linear_y * sin_yaw,
+            linear_x * sin_yaw + linear_y * cos_yaw,
+            0.0,
+        ])
+        self._robot.set_linear_velocity(linear_velocity_world)
+        self._robot.set_angular_velocity(np.array([0.0, 0.0, angular_z]))
+
+        self._previous_speed = float(np.linalg.norm(linear_velocity_world[:2]))
+        self._previous_angular_velocity_ = float(angular_z)
+
     def step_pause(self, mission, time):
         print(f"On pause...")
 
@@ -434,7 +466,10 @@ class SegMap(BaseSample):
         #     self.edit_map()
         #     self.dt = 0.0
 
-        self.step_mission(time)
+        if self.manual_control:
+            self._step_manual_control()
+        else:
+            self.step_mission(time)
         self.previous_time_ = time
 
     async def setup_post_load(self):
