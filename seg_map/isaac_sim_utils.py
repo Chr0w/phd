@@ -49,9 +49,20 @@ def create_dome_light(stage_path="/World/dome_light"):
         }
     )
 
+def _get_xformable(stage, prim_path):
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim or not prim.IsValid():
+        return None
+    mesh = UsdGeom.Mesh.Get(stage, prim_path)
+    if mesh:
+        return mesh
+    return UsdGeom.Xformable(prim)
+
+
 def translate_object(stage, prim_path, translate):
-    box_mesh = UsdGeom.Mesh.Get(stage, prim_path)
-    physicsUtils.set_or_add_translate_op(box_mesh, translate=translate)
+    xformable = _get_xformable(stage, prim_path)
+    if xformable:
+        physicsUtils.set_or_add_translate_op(xformable, translate=translate)
 
 def rotate_object(stage, prim_path, rotation):
     """
@@ -64,8 +75,9 @@ def rotate_object(stage, prim_path, rotation):
     """
     import robot_utils
     rotation_quaternion = robot_utils.yaw_degrees_to_quaternion(rotation)
-    box_mesh = UsdGeom.Mesh.Get(stage, prim_path)
-    physicsUtils.set_or_add_orient_op(box_mesh, rotation_quaternion)
+    xformable = _get_xformable(stage, prim_path)
+    if xformable:
+        physicsUtils.set_or_add_orient_op(xformable, rotation_quaternion)
 
 
 async def disable_gravity(scene):

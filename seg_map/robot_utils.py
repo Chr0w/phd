@@ -40,6 +40,20 @@ def yaw_degrees_to_quaternion(yaw_degrees):
     return Gf.Quatd(w, x, y, z)
 
 
+def yaw_degrees_to_orientation(yaw_degrees):
+    """Return (w, x, y, z) numpy quaternion for Isaac Sim set_world_pose."""
+    yaw_radians = np.radians(yaw_degrees)
+    half_yaw = yaw_radians / 2.0
+    return np.array([np.cos(half_yaw), 0.0, 0.0, np.sin(half_yaw)])
+
+
+def get_start_yaw_degrees(start_position):
+    """Extract yaw in degrees from start_position [x, y] or [x, y, yaw]."""
+    if start_position and len(start_position) >= 3:
+        return float(start_position[2])
+    return 0.0
+
+
 def read_start_info_from_yaml(yaml_path=None):
     """
     Read start position and seed from YAML file.
@@ -49,7 +63,7 @@ def read_start_info_from_yaml(yaml_path=None):
         yaml_path: Path to the YAML file containing start position (defaults to /home/{USER}/devcontainer/ros2_ws/start_pos/start_pos.yaml)
     
     Returns:
-        tuple: (start_position, seed_nr) where start_position is [x, y] and seed_nr is int
+        tuple: (start_position, seed_nr) where start_position is [x, y] or [x, y, yaw_degrees] and seed_nr is int
     """
     if yaml_path is None:
         user = os.environ.get("USER")
@@ -63,7 +77,9 @@ def read_start_info_from_yaml(yaml_path=None):
                 x = float(start_pos_data["robot_start_x"])
                 y = float(start_pos_data["robot_start_y"])
                 start_position = [x, y]
-                
+                if "robot_start_yaw" in start_pos_data:
+                    start_position.append(float(start_pos_data["robot_start_yaw"]))
+
                 # Read seed
                 if "seed" in start_pos_data:
                     seed_nr = int(start_pos_data["seed"])
@@ -81,54 +97,43 @@ def read_start_info_from_yaml(yaml_path=None):
         raise RuntimeError(f"Failed to read start position from {yaml_path}: {e}") from e
 
 
-def setup_missions(create_waypoint_func, missions_file_path=None, waypoints=None):
+def setup_missions(create_waypoint_func, missions_file_path=None):
     """
-    Load missions from YAML file or use provided waypoints and create Mission objects.
+    Load missions from YAML file and create Mission objects.
     
     Args:
         create_waypoint_func: Function to create waypoint objects
-        missions_file_path: Path to the missions YAML file (optional, ignored if waypoints provided)
-        waypoints: List of Waypoint objects (optional, takes precedence over missions_file_path)
+        missions_file_path: Path to the missions YAML file
     
     Returns:
         tuple: (missions_list, current_mission_number, all_missions_completed, new_mission, start_position)
     """
-    from mission import Mission, MissionType, StatusType, Waypoint
-    
+    from mission import Mission, MissionType, StatusType
+
     waypoint_list = []
     start_position = []
-    
-    # If waypoints are provided directly, use them
-    if waypoints is not None:
-        waypoint_list = waypoints
+
+    if missions_file_path is None:
+        missions_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "missions", "mission_1.yaml")
     else:
-        # Otherwise, load from YAML file
-        if missions_file_path is None:
-            missions_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "missions", "mission_1.yaml")
-        else:
-            missions_file = missions_file_path
-            
-        try:
-            if yaml is not None:
-                with open(missions_file, "r") as f:
-                    data = yaml.safe_load(f)
-                    waypoint_list = data.get("waypoints", []) if data else []
-                    # Read start_position from YAML if present
-                    if data and "start_position" in data:
-                        start_position = data["start_position"]
-        except FileNotFoundError:
-            print(f"Missions file not found: {missions_file}")
-        except Exception as e:
-            print(f"Failed to load missions file {missions_file}: {e}")
+        missions_file = missions_file_path
+
+    try:
+        if yaml is not None:
+            with open(missions_file, "r") as f:
+                data = yaml.safe_load(f)
+                waypoint_list = data.get("waypoints", []) if data else []
+                if data and "start_position" in data:
+                    start_position = data["start_position"]
+    except FileNotFoundError:
+        print(f"Missions file not found: {missions_file}")
+    except Exception as e:
+        print(f"Failed to load missions file {missions_file}: {e}")
 
     missions = []
     for i, wp in enumerate(waypoint_list):
         try:
-            # Handle both Waypoint objects and coordinate lists
-            if isinstance(wp, Waypoint):
-                wx, wy = wp.x, wp.y
-            else:
-                wx, wy = float(wp[0]), float(wp[1])
+            wx, wy = float(wp[0]), float(wp[1])
         except Exception:
             continue
         missions.append(Mission(i, MissionType.MOVE_TO_WAYPOINT, create_waypoint_func(wx, wy)))

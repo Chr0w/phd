@@ -1,5 +1,5 @@
 import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -8,8 +8,6 @@ from typing import Optional
 class Waypoint:
     x: float
     y: float
-    nr: int = 0
-    connected_numbers: list[int] = field(default_factory=list)
 
 class MissionType(Enum):
     MOVE_TO_WAYPOINT = "MoveToWaypoint"
@@ -22,7 +20,7 @@ class StatusType(Enum):
     IN_PROGRESS = "IN_PROGRESS"
 
 class Mission:
-    def __init__(self, mission_number: int, mission_type: MissionType, waypoint: Optional[Waypoint] = None, pause_time: Optional[float] = None, connected_numbers: list[int] = []) -> None:
+    def __init__(self, mission_number: int, mission_type: MissionType, waypoint: Optional[Waypoint] = None, pause_time: Optional[float] = None) -> None:
         """
         Initialize a mission
         
@@ -37,7 +35,6 @@ class Mission:
         self._type: MissionType = mission_type
         self._waypoint: Optional[Waypoint] = waypoint
         self._pause_time: Optional[float] = pause_time
-        self._connected_numbers: list[int] = connected_numbers
     def __str__(self) -> str:
         """String representation of the mission"""
         result = "-------------\n"
@@ -49,8 +46,6 @@ class Mission:
             result += f"\nPause Time: {self._pause_time}"
         elif self._type == MissionType.MOVE_TO_WAYPOINT and self._waypoint is not None:
             result += f"\nWaypoint: ({self._waypoint.x}, {self._waypoint.y})"
-        if self._connected_numbers is not None:
-            result += f"\nConnected Numbers: {self._connected_numbers}"
         result += "\n-------------\n"
         return result
     
