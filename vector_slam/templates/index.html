@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SE2 Vector SLAM Sandbox</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="menu-bar">
+    <button id="btn-make-line" type="button">Make static line</button>
+    <div class="move-sensor-group">
+      <label for="input-x">x (m)</label>
+      <input id="input-x" type="number" step="0.01" value="0">
+      <label for="input-y">y (m)</label>
+      <input id="input-y" type="number" step="0.01" value="0">
+      <label for="input-theta">θ (deg)</label>
+      <input id="input-theta" type="number" step="0.1" value="0">
+      <button id="btn-move" type="button">Move</button>
+    </div>
+    <button id="btn-reset" type="button">Reset</button>
+    <div class="zoom-group">
+      <button id="btn-zoom-out" type="button" title="Zoom out">−</button>
+      <span id="zoom-label">100%</span>
+      <button id="btn-zoom-in" type="button" title="Zoom in">+</button>
+    </div>
+    <span id="mode-indicator" class="mode-indicator"></span>
+  </header>
+
+  <main class="workspace">
+    <section class="canvas-area">
+      <canvas id="map-canvas" width="1000" height="1000"></canvas>
+    </section>
+    <aside class="side-panel" id="side-panel">
+      <h2>Overview</h2>
+      <div id="panel-content">
+        <p>Loading...</p>
+      </div>
+    </aside>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/geometry.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/canvas.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/gmm_plot.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
