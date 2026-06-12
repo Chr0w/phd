@@ -56,6 +56,40 @@ body {
   margin-left: 8px;
 }
 
+.batch-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.batch-group input[type="number"] {
+  width: 56px;
+  padding: 4px 6px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.batch-group button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: #8e44ad;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.batch-group button:hover {
+  background: #7d3c98;
+}
+
+.batch-group button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .zoom-group button {
   width: 28px;
   padding: 4px 0;
@@ -163,6 +197,57 @@ body {
   color: #2c3e50;
 }
 
+.settings-group {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.settings-group .slider-group {
+  margin-bottom: 12px;
+}
+
+.settings-group .slider-group:last-child {
+  margin-bottom: 0;
+}
+
+.intersection-summary {
+  font-size: 11px;
+  color: #777;
+  margin-bottom: 8px;
+}
+
+.intersection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "SF Mono", "Consolas", monospace;
+  font-size: 10px;
+  margin-bottom: 12px;
+}
+
+.intersection-table th,
+.intersection-table td {
+  padding: 4px 3px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.intersection-table th {
+  font-family: system-ui, sans-serif;
+  font-size: 10px;
+  color: #666;
+  font-weight: 600;
+}
+
+.intersection-table tr.excluded td {
+  color: #bbb;
+  text-decoration: line-through;
+}
+
+.muted {
+  color: #999;
+}
+
 .side-panel h3 {
   font-size: 14px;
   margin: 12px 0 6px;
@@ -261,6 +346,31 @@ body {
   margin-bottom: 8px;
 }
 
+.weighted-position {
+  font-size: 12px;
+  color: #c0392b;
+  font-weight: 600;
+  font-family: "SF Mono", "Consolas", monospace;
+  margin-bottom: 8px;
+}
+
+.panel-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border: 1px solid #c0392b;
+  border-radius: 4px;
+  background: #fff;
+  color: #c0392b;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.panel-btn:hover {
+  background: #fdecea;
+}
+
 .gmm-plot-wrap {
   margin-top: 8px;
   border: 1px solid #e0e0e0;
@@ -270,6 +380,67 @@ body {
 }
 
 #gmm-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.batch-plot-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px solid #eee;
+}
+
+.batch-plot-section.hidden {
+  display: none;
+}
+
+.batch-plot-section h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #34495e;
+}
+
+.batch-stats {
+  margin-bottom: 8px;
+}
+
+.batch-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "SF Mono", "Consolas", monospace;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+
+.batch-stats-table th,
+.batch-stats-table td {
+  padding: 4px 3px;
+  text-align: right;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.batch-stats-table th:first-child,
+.batch-stats-table td:first-child {
+  text-align: left;
+  font-family: system-ui, sans-serif;
+}
+
+.batch-stats-table th {
+  font-family: system-ui, sans-serif;
+  font-size: 10px;
+  color: #666;
+  font-weight: 600;
+}
+
+.batch-plot-wrap {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+#batch-plot {
   display: block;
   width: 100%;
   height: auto;

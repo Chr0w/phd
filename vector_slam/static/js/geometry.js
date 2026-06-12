@@ -72,6 +72,11 @@ function resetView() {
   View.zoom = 1;
 }
 
+function panToWorld(wx, wy) {
+  View.panX = wx;
+  View.panY = wy;
+}
+
 function dist(ax, ay, bx, by) {
   const dx = ax - bx;
   const dy = ay - by;

@@ -55,10 +55,13 @@ def rotate_line_about(
 
 
 def add_scan_line_noise(
-    p1: Point, p2: Point, rng: np.random.Generator
+    p1: Point,
+    p2: Point,
+    rng: np.random.Generator,
+    noise_std_deg: float = SCAN_ANGLE_NOISE_STD_DEG,
 ) -> Tuple[Point, Point]:
-    """Apply Gaussian angular noise (std = SCAN_ANGLE_NOISE_STD_DEG) about midpoint."""
-    noise_deg = float(rng.normal(0.0, SCAN_ANGLE_NOISE_STD_DEG))
+    """Apply Gaussian angular noise about midpoint."""
+    noise_deg = float(rng.normal(0.0, noise_std_deg))
     mid = line_midpoint(p1, p2)
     return (
         rotate_point_about(mid, p1, noise_deg),
@@ -116,3 +119,58 @@ def relative_angle_deg(scan_p1: Point, scan_p2: Point, ep_x: float, ep_y: float)
     vy_ep = ep_y - my
     vx_line, vy_line = line_direction(scan_p1, scan_p2)
     return acute_angle_between_vectors(vx_line, vy_line, vx_ep, vy_ep)
+
+
+def line_unit_normal(p1: Point, p2: Point) -> Tuple[float, float]:
+    """Unit normal to the line (90° CCW from p1→p2 direction)."""
+    dx, dy = line_direction(p1, p2)
+    length = math.hypot(dx, dy)
+    if length < 1e-12:
+        return (0.0, 0.0)
+    return (-dy / length, dx / length)
+
+
+def signed_distance_to_line(point: Point, line_p1: Point, line_p2: Point) -> float:
+    """Signed distance from point to the infinite line through line_p1–line_p2."""
+    nx, ny = line_unit_normal(line_p1, line_p2)
+    vx = point[0] - line_p1[0]
+    vy = point[1] - line_p1[1]
+    return vx * nx + vy * ny
+
+
+def foot_of_perpendicular(point: Point, line_p1: Point, line_p2: Point) -> Point:
+    """Foot of the perpendicular from point onto the infinite line."""
+    d = signed_distance_to_line(point, line_p1, line_p2)
+    nx, ny = line_unit_normal(line_p1, line_p2)
+    return (point[0] - d * nx, point[1] - d * ny)
+
+
+def signed_distance_between_lines(
+    line_a_p1: Point, line_a_p2: Point, line_b_p1: Point, line_b_p2: Point
+) -> float:
+    """Signed distance from line A to line B along A's unit normal."""
+    nx, ny = line_unit_normal(line_a_p1, line_a_p2)
+    vx = line_b_p1[0] - line_a_p1[0]
+    vy = line_b_p1[1] - line_a_p1[1]
+    return vx * nx + vy * ny
+
+
+def intersect_lines(
+    line_a_p1: Point, line_a_p2: Point, line_b_p1: Point, line_b_p2: Point
+) -> Point | None:
+    """Intersection of two infinite lines, or None if parallel."""
+    x1, y1 = line_a_p1
+    x2, y2 = line_a_p2
+    x3, y3 = line_b_p1
+    x4, y4 = line_b_p2
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(denom) < 1e-12:
+        return None
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+
+
+def intersection_angle_weight_deg(angle_deg: float) -> float:
+    """Weight from line intersection angle: 90° → 1, 0° → 0."""
+    acute = min(angle_deg, 180.0 - angle_deg)
+    return math.sin(math.radians(acute))

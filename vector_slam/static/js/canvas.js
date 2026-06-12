@@ -12,6 +12,16 @@ const CanvasView = (function () {
   const MIDPOINT_RADIUS = 3;
   const TO_EP_COLOR = "#bbbbbb";
   const ARC_COLOR = "#888888";
+  const CORRECTION_DIRECTION_COLOR = "#87CEEB";
+  const CORRECTION_VECTOR_COLOR = "#2471a3";
+  const PROBABILITY_LINE_COLOR = "#9b59b6";
+  const INTERSECTION_COLOR = "#8e44ad";
+  const WEIGHTED_POSITION_COLOR = "#ff0000";
+  const WEIGHTED_OUTLINE_COLOR = "#ffffff";
+  const WEIGHTED_CROSS_PX = 14;
+  const WEIGHTED_CIRCLE_PX = 16;
+  const WEIGHTED_LINE_WIDTH = 2.5;
+  const WEIGHTED_OUTLINE_WIDTH = 4;
 
   let canvas, ctx;
   let gameState = null;
@@ -115,6 +125,127 @@ const CanvasView = (function () {
     drawLine(mid, [ep.x, ep.y], TO_EP_COLOR, 1.5);
   }
 
+  function drawVectorArrow(p1, p2, color, width) {
+    drawLine(p1, p2, color, width);
+
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-9) return;
+
+    const ux = dx / len;
+    const uy = dy / len;
+    const headLen = 0.12;
+    const headWidth = 0.06;
+    const bx = p2[0] - ux * headLen;
+    const by = p2[1] - uy * headLen;
+    const px = -uy;
+    const py = ux;
+    const left = [bx + px * headWidth, by + py * headWidth];
+    const right = [bx - px * headWidth, by - py * headWidth];
+
+    const sTip = worldToScreen(p2[0], p2[1]);
+    const sLeft = worldToScreen(left[0], left[1]);
+    const sRight = worldToScreen(right[0], right[1]);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(sTip.x, sTip.y);
+    ctx.lineTo(sLeft.x, sLeft.y);
+    ctx.lineTo(sRight.x, sRight.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCorrectionVectors() {
+    const corrections = gameState.correction_vectors || [];
+    for (const item of corrections) {
+      if (item.excluded) continue;
+      const dir = item.direction_line;
+      drawLine(dir.p1, dir.p2, CORRECTION_DIRECTION_COLOR, 1.5);
+
+      const vec = item.correction_vector;
+      drawVectorArrow(vec.start, vec.end, CORRECTION_VECTOR_COLOR, 2);
+
+      if (item.probability_line) {
+        const pl = item.probability_line;
+        drawLine(pl.p1, pl.p2, PROBABILITY_LINE_COLOR, 1.5);
+      }
+    }
+  }
+
+  function drawProbabilityIntersections() {
+    const intersections = gameState.probability_intersections || [];
+    for (const item of intersections) {
+      const color = item.excluded ? "#cccccc" : INTERSECTION_COLOR;
+      const radius = item.excluded ? 3 : 5;
+      drawEndpoint(item.point, color, radius);
+      if (!item.excluded) {
+        drawEndpoint(item.point, "#ffffff", 2);
+      }
+    }
+  }
+
+  function drawWeightedPositionGuide() {
+    const pos = gameState.weighted_position;
+    const ep = gameState.estimated_pose;
+    if (!pos || !ep) return;
+
+    const dx = pos.x - ep.x;
+    const dy = pos.y - ep.y;
+    if (Math.hypot(dx, dy) < 0.05) return;
+
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(255, 0, 0, 0.45)";
+    ctx.lineWidth = 1.5;
+    const s1 = worldToScreen(ep.x, ep.y);
+    const s2 = worldToScreen(pos.x, pos.y);
+    ctx.beginPath();
+    ctx.moveTo(s1.x, s1.y);
+    ctx.lineTo(s2.x, s2.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawWeightedPosition() {
+    const pos = gameState.weighted_position;
+    if (!pos) return;
+
+    const center = worldToScreen(pos.x, pos.y);
+    const r = WEIGHTED_CIRCLE_PX;
+    const h = WEIGHTED_CROSS_PX;
+
+    ctx.save();
+    ctx.lineCap = "round";
+
+    // White outline for contrast on dark sensor dot
+    ctx.strokeStyle = WEIGHTED_OUTLINE_COLOR;
+    ctx.lineWidth = WEIGHTED_OUTLINE_WIDTH;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(center.x - h, center.y);
+    ctx.lineTo(center.x + h, center.y);
+    ctx.moveTo(center.x, center.y - h);
+    ctx.lineTo(center.x, center.y + h);
+    ctx.stroke();
+
+    ctx.strokeStyle = WEIGHTED_POSITION_COLOR;
+    ctx.lineWidth = WEIGHTED_LINE_WIDTH;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(center.x - h, center.y);
+    ctx.lineTo(center.x + h, center.y);
+    ctx.moveTo(center.x, center.y - h);
+    ctx.lineTo(center.x, center.y + h);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawLineMidpoint(p1, p2, color) {
     const mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
     drawEndpoint(mid, color, MIDPOINT_RADIUS);
@@ -198,11 +329,17 @@ const CanvasView = (function () {
       drawLineMidpoint(line.p1, line.p2, ALIGNED_SCAN_COLOR);
     }
 
+    drawCorrectionVectors();
+    drawProbabilityIntersections();
+    drawWeightedPositionGuide();
+
     if (gameState.estimated_pose) {
       drawSensor(gameState.estimated_pose, 0.4);
     }
 
     drawSensor(gameState.true_pose, 1.0);
+
+    drawWeightedPosition();
 
     if (placeAnchor) {
       drawEndpoint(placeAnchor, "#3498db", 5);

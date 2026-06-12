@@ -4,12 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SE2 Vector SLAM Sandbox</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7">
 </head>
 <body>
   <header class="menu-bar">
     <button id="btn-make-line" type="button">Make static line</button>
+    <button id="btn-random-pose" type="button">New random position</button>
     <button id="btn-reset" type="button">Reset</button>
+    <div class="batch-group">
+      <input id="input-batch-n" type="number" min="1" max="500" value="50" title="Number of trials">
+      <button id="btn-batch-run" type="button">Run batch</button>
+    </div>
     <div class="zoom-group">
       <button id="btn-zoom-out" type="button" title="Zoom out">−</button>
       <span id="zoom-label">100%</span>
@@ -24,8 +29,27 @@
     </section>
     <aside class="side-panel" id="side-panel">
       <h2>Overview</h2>
+      <div class="settings-group">
+        <div class="slider-group">
+          <label for="slider-min-angle">Min intersection angle (deg)</label>
+          <input id="slider-min-angle" type="range" min="0" max="45" step="0.5" value="5">
+          <span id="label-min-angle" class="slider-value">5.0°</span>
+        </div>
+        <div class="slider-group">
+          <label for="slider-noise">Scan angle noise σ (deg)</label>
+          <input id="slider-noise" type="range" min="0" max="2" step="0.01" value="0.1">
+          <span id="label-noise" class="slider-value">0.10°</span>
+        </div>
+      </div>
       <div id="panel-content">
         <p>Loading...</p>
+      </div>
+      <div id="batch-plot-section" class="batch-plot-section hidden">
+        <h3>Batch errors</h3>
+        <div id="batch-stats" class="batch-stats"></div>
+        <div class="batch-plot-wrap">
+          <canvas id="batch-plot" width="280" height="180"></canvas>
+        </div>
       </div>
     </aside>
     <aside class="pose-panel" id="pose-panel">
@@ -48,9 +72,10 @@
     </aside>
   </main>
 
-  <script src="{{ url_for('static', filename='js/geometry.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/canvas.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/gmm_plot.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/geometry.js') }}?v=4"></script>
+  <script src="{{ url_for('static', filename='js/canvas.js') }}?v=4"></script>
+  <script src="{{ url_for('static', filename='js/gmm_plot.js') }}?v=7"></script>
+  <script src="{{ url_for('static', filename='js/batch_plot.js') }}?v=8"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=9"></script>
 </body>
 </html>
