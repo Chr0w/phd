@@ -14,8 +14,9 @@ from se2 import (
     EXCLUDED_ANGLE_THRESHOLD_DEG,
     add_scan_line_noise,
     line_midpoint,
-    pair_angle_diff_deg,
+    pair_signed_angle_diff_deg,
     relative_angle_deg,
+    rotate_line_about,
     transform_line,
 )
 
@@ -181,7 +182,7 @@ class GameState:
             scan = scan_by_id.get(pair["id"])
             if static is None or scan is None:
                 continue
-            angle = pair_angle_diff_deg(static.p1, static.p2, scan.p1, scan.p2)
+            angle = pair_signed_angle_diff_deg(static.p1, static.p2, scan.p1, scan.p2)
             diffs.append(
                 {
                     "id": pair["id"],
@@ -190,6 +191,25 @@ class GameState:
                 }
             )
         return diffs
+
+    def _build_aligned_scan_lines(self, alpha_peak: float | None) -> list[dict[str, Any]]:
+        if self.estimated_pose is None or alpha_peak is None:
+            return []
+        ep_x, ep_y, _ = self.estimated_pose
+        center = (ep_x, ep_y)
+        aligned: list[dict[str, Any]] = []
+        for line in self.scan_lines:
+            p1, p2 = rotate_line_about(line.p1, line.p2, center, alpha_peak)
+            mid = line_midpoint(p1, p2)
+            aligned.append(
+                {
+                    "id": line.id,
+                    "p1": list(p1),
+                    "p2": list(p2),
+                    "midpoint": list(mid),
+                }
+            )
+        return aligned
 
     def to_dict(self) -> dict[str, Any]:
         est = None
@@ -202,12 +222,16 @@ class GameState:
         pair_angle_diffs = self._build_pair_angle_diffs(line_pairs)
         angle_values = [d["angle_deg"] for d in pair_angle_diffs]
         gmm = fit_angle_gmm(angle_values)
+        alpha_peak = gmm["peak"]["x"] if gmm and gmm.get("peak") else None
+        aligned_scan_lines = self._build_aligned_scan_lines(alpha_peak)
 
         return {
             "true_pose": {"x": TRUE_POSE[0], "y": TRUE_POSE[1], "theta": TRUE_POSE[2]},
             "estimated_pose": est,
             "static_lines": [line.to_dict() for line in self.static_lines],
             "scan_lines": [line.to_dict() for line in self.scan_lines],
+            "aligned_scan_lines": aligned_scan_lines,
+            "alpha_peak_deg": alpha_peak,
             "line_pairs": line_pairs,
             "pair_angle_diffs": pair_angle_diffs,
             "angle_gmm": gmm,

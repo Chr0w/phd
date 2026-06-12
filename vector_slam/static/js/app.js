@@ -3,11 +3,13 @@
 (function () {
   const canvas = document.getElementById("map-canvas");
   const btnMakeLine = document.getElementById("btn-make-line");
-  const btnMove = document.getElementById("btn-move");
   const btnReset = document.getElementById("btn-reset");
-  const inputX = document.getElementById("input-x");
-  const inputY = document.getElementById("input-y");
-  const inputTheta = document.getElementById("input-theta");
+  const sliderX = document.getElementById("slider-x");
+  const sliderY = document.getElementById("slider-y");
+  const sliderTheta = document.getElementById("slider-theta");
+  const labelX = document.getElementById("label-x");
+  const labelY = document.getElementById("label-y");
+  const labelTheta = document.getElementById("label-theta");
   const modeIndicator = document.getElementById("mode-indicator");
   const panelContent = document.getElementById("panel-content");
   const btnZoomIn = document.getElementById("btn-zoom-in");
@@ -16,6 +18,9 @@
 
   let placeLineMode = false;
   let gmmCanvas = null;
+  let syncingSliders = false;
+  let moveInFlight = false;
+  let moveQueued = false;
 
   CanvasView.init(canvas);
 
@@ -30,14 +35,39 @@
     return res.json();
   }
 
+  function getPoseFromSliders() {
+    return {
+      x: parseFloat(sliderX.value) || 0,
+      y: parseFloat(sliderY.value) || 0,
+      theta: parseFloat(sliderTheta.value) || 0,
+    };
+  }
+
+  function updateSliderLabels() {
+    labelX.textContent = parseFloat(sliderX.value).toFixed(2);
+    labelY.textContent = parseFloat(sliderY.value).toFixed(2);
+    labelTheta.textContent = `${parseFloat(sliderTheta.value).toFixed(1)}°`;
+  }
+
+  function syncSlidersFromPose(pose) {
+    syncingSliders = true;
+    if (pose) {
+      sliderX.value = Math.max(-10, Math.min(10, pose.x));
+      sliderY.value = Math.max(-10, Math.min(10, pose.y));
+      sliderTheta.value = Math.max(-135, Math.min(135, pose.theta));
+    } else {
+      sliderX.value = "0";
+      sliderY.value = "0";
+      sliderTheta.value = "0";
+    }
+    updateSliderLabels();
+    syncingSliders = false;
+  }
+
   function applyState(state) {
     CanvasView.setState(state);
+    syncSlidersFromPose(state.estimated_pose);
     updatePanel(state);
-    if (state.estimated_pose) {
-      inputX.value = state.estimated_pose.x.toFixed(2);
-      inputY.value = state.estimated_pose.y.toFixed(2);
-      inputTheta.value = state.estimated_pose.theta.toFixed(1);
-    }
   }
 
   function lineWithMid(line) {
@@ -102,6 +132,9 @@
         html += `<li>Pair ${d.index}: ${d.angle_deg.toFixed(4)}°</li>`;
       });
       html += "</ul>";
+      if (state.alpha_peak_deg != null) {
+        html += `<p class="alpha-peak">α_peak: ${state.alpha_peak_deg.toFixed(4)}° · green: +α_peak</p>`;
+      }
       html += '<div class="gmm-plot-wrap">';
       html += '<canvas id="gmm-plot" width="280" height="140"></canvas>';
       html += "</div>";
@@ -134,6 +167,34 @@
       : "Drag endpoints to move static lines · scroll to zoom";
   }
 
+  async function moveSensorFromSliders() {
+    if (moveInFlight) {
+      moveQueued = true;
+      return;
+    }
+    moveInFlight = true;
+    try {
+      const pose = getPoseFromSliders();
+      const state = await api("POST", "/api/move_sensor", pose);
+      applyState(state);
+    } catch (e) {
+      alert("Move failed: " + e.message);
+    } finally {
+      moveInFlight = false;
+      if (moveQueued) {
+        moveQueued = false;
+        moveSensorFromSliders();
+      }
+    }
+  }
+
+  function onSliderInput() {
+    updateSliderLabels();
+    if (!syncingSliders) {
+      moveSensorFromSliders();
+    }
+  }
+
   async function loadState() {
     const state = await api("GET", "/api/state");
     applyState(state);
@@ -143,30 +204,18 @@
     setPlaceLineMode(!placeLineMode);
   });
 
-  btnMove.addEventListener("click", async () => {
-    try {
-      const state = await api("POST", "/api/move_sensor", {
-        x: parseFloat(inputX.value) || 0,
-        y: parseFloat(inputY.value) || 0,
-        theta: parseFloat(inputTheta.value) || 0,
-      });
-      applyState(state);
-    } catch (e) {
-      alert("Move failed: " + e.message);
-    }
-  });
-
   btnReset.addEventListener("click", async () => {
     try {
       const state = await api("POST", "/api/reset");
       applyState(state);
       setPlaceLineMode(false);
-      inputX.value = "0";
-      inputY.value = "0";
-      inputTheta.value = "0";
     } catch (e) {
       alert("Reset failed: " + e.message);
     }
+  });
+
+  [sliderX, sliderY, sliderTheta].forEach((slider) => {
+    slider.addEventListener("input", onSliderInput);
   });
 
   canvas.addEventListener("mousedown", async (evt) => {
@@ -228,6 +277,7 @@
   });
 
   updateZoomLabel();
+  updateSliderLabels();
 
   loadState().catch((e) => {
     panelContent.innerHTML = `<p>Error loading state: ${e.message}</p>`;

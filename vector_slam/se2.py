@@ -44,6 +44,16 @@ def rotate_point_about(center: Point, point: Point, delta_deg: float) -> Point:
     return (cos_t * x - sin_t * y + cx, sin_t * x + cos_t * y + cy)
 
 
+def rotate_line_about(
+    p1: Point, p2: Point, center: Point, delta_deg: float
+) -> Tuple[Point, Point]:
+    """Rotate both endpoints of a line about center."""
+    return (
+        rotate_point_about(center, p1, delta_deg),
+        rotate_point_about(center, p2, delta_deg),
+    )
+
+
 def add_scan_line_noise(
     p1: Point, p2: Point, rng: np.random.Generator
 ) -> Tuple[Point, Point]:
@@ -69,6 +79,27 @@ def acute_angle_between_vectors(vx1: float, vy1: float, vx2: float, vy2: float) 
 
 def line_direction(p1: Point, p2: Point) -> Tuple[float, float]:
     return (p2[0] - p1[0], p2[1] - p1[1])
+
+
+def _signed_direction_diff_deg(vx1: float, vy1: float, vx2: float, vy2: float) -> float:
+    """Signed CCW angle (deg) from direction (vx2, vy2) to (vx1, vy1)."""
+    a1 = math.atan2(vy1, vx1)
+    a2 = math.atan2(vy2, vx2)
+    diff = a1 - a2
+    while diff > math.pi:
+        diff -= 2 * math.pi
+    while diff < -math.pi:
+        diff += 2 * math.pi
+    return math.degrees(diff)
+
+
+def pair_signed_angle_diff_deg(
+    static_p1: Point, static_p2: Point, scan_p1: Point, scan_p2: Point
+) -> float:
+    """Signed angle (deg) from scan line direction to static line direction."""
+    vx1, vy1 = line_direction(static_p1, static_p2)
+    vx2, vy2 = line_direction(scan_p1, scan_p2)
+    return _signed_direction_diff_deg(vx1, vy1, vx2, vy2)
 
 
 def pair_angle_diff_deg(static_p1: Point, static_p2: Point, scan_p1: Point, scan_p2: Point) -> float:

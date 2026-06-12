@@ -8,6 +8,7 @@ const CanvasView = (function () {
   const STATIC_COLOR = "#000000";
   const SCAN_COLOR = "#e74c3c";
   const SCAN_EXCLUDED_COLOR = "#b87878";
+  const ALIGNED_SCAN_COLOR = "#27ae60";
   const MIDPOINT_RADIUS = 3;
   const TO_EP_COLOR = "#bbbbbb";
   const ARC_COLOR = "#888888";
@@ -190,6 +191,11 @@ const CanvasView = (function () {
         drawEndpoint(p1, isHover && hoverEndpoint.endpoint === "p1" ? "#3498db" : "#333", handleRadius);
         drawEndpoint(p2, isHover && hoverEndpoint.endpoint === "p2" ? "#3498db" : "#333", handleRadius);
       }
+    }
+
+    for (const line of gameState.aligned_scan_lines || []) {
+      drawLine(line.p1, line.p2, ALIGNED_SCAN_COLOR, 2);
+      drawLineMidpoint(line.p1, line.p2, ALIGNED_SCAN_COLOR);
     }
 
     if (gameState.estimated_pose) {

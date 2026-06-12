@@ -9,15 +9,6 @@
 <body>
   <header class="menu-bar">
     <button id="btn-make-line" type="button">Make static line</button>
-    <div class="move-sensor-group">
-      <label for="input-x">x (m)</label>
-      <input id="input-x" type="number" step="0.01" value="0">
-      <label for="input-y">y (m)</label>
-      <input id="input-y" type="number" step="0.01" value="0">
-      <label for="input-theta">θ (deg)</label>
-      <input id="input-theta" type="number" step="0.1" value="0">
-      <button id="btn-move" type="button">Move</button>
-    </div>
     <button id="btn-reset" type="button">Reset</button>
     <div class="zoom-group">
       <button id="btn-zoom-out" type="button" title="Zoom out">−</button>
@@ -35,6 +26,24 @@
       <h2>Overview</h2>
       <div id="panel-content">
         <p>Loading...</p>
+      </div>
+    </aside>
+    <aside class="pose-panel" id="pose-panel">
+      <h2>Estimated pose</h2>
+      <div class="slider-group">
+        <label for="slider-x">x (m)</label>
+        <input id="slider-x" type="range" min="-10" max="10" step="0.01" value="0">
+        <span id="label-x" class="slider-value">0.00</span>
+      </div>
+      <div class="slider-group">
+        <label for="slider-y">y (m)</label>
+        <input id="slider-y" type="range" min="-10" max="10" step="0.01" value="0">
+        <span id="label-y" class="slider-value">0.00</span>
+      </div>
+      <div class="slider-group">
+        <label for="slider-theta">θ (deg)</label>
+        <input id="slider-theta" type="range" min="-135" max="135" step="0.1" value="0">
+        <span id="label-theta" class="slider-value">0.0°</span>
       </div>
     </aside>
   </main>
