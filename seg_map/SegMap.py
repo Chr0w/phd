@@ -30,39 +30,145 @@ import random
 import numpy as np
 from typing import Dict, Tuple, Optional
 
-from pxr import UsdPhysics, Gf, UsdGeom
+from pxr import Usd, UsdPhysics, Gf, UsdGeom, Sdf
 import omni
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.objects import VisualCuboid
-from isaacsim.examples.interactive.base_sample import BaseSample
-from isaacsim.core.api.robots import Robot
+import omni.kit.app
+from isaacsim.examples.base.base_sample_experimental import BaseSample
+import isaacsim.core.experimental.utils.app as app_utils
+from isaacsim.core.simulation_manager import SimulationManager
 
 
 # To link this repo with isaac sim:
-# cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive
-# ln -s /home/${USER}/phd/seg_map/ user_examples
+# cd ~/isaacsim/exts/isaacsim.examples.interactive/isaacsim/examples/interactive/user_examples
+# ln -sfn /home/${USER}/phd/seg_map seg_map
 
 class SegMap(BaseSample):
 
     def register_sim_step_callback(self):
         print("Registering sim step callback")
-        self._world.add_physics_callback("sim_step", callback_fn=self.custom_simulation_step)
+        self.deregister_sim_step_callback()
+        self._sim_step_callback_subscription = (
+            omni.kit.app.get_app()
+            .get_update_event_stream()
+            .create_subscription_to_pop(
+                self._on_sim_step_event,
+                name="seg_map_sim_step",
+            )
+        )
+
+    def deregister_sim_step_callback(self):
+        self._sim_step_callback_subscription = None
+
+    def _on_sim_step_event(self, event):
+        try:
+            self.custom_simulation_step(event.payload.get("dt", 0.0))
+        except Exception as exc:
+            print(f"Disabling seg_map sim callback after error: {exc}")
+            self.deregister_sim_step_callback()
+            self._missions_started = False
+
+    def start_missions(self):
+        self._ensure_robot_asset()
+        self._missions_started = True
+        self._mission_loop_logged = False
+        self.previous_time_ = SimulationManager.get_simulation_time()
+        self.register_sim_step_callback()
+        app_utils.play()
+
+    def _start_missions_from_timeline(self, time):
+        self._ensure_robot_asset()
+        self._missions_started = True
+        self._mission_loop_logged = False
+        self.previous_time_ = time
+        print("Mission loop armed from timeline play")
+
+    def _ensure_robot_ready(self):
+        self._ensure_robot_asset()
+        return self._robot_prim().IsValid()
+
+    def _robot_world_pose(self):
+        prim = self._robot_prim()
+        transform = UsdGeom.XformCache(Usd.TimeCode.Default()).GetLocalToWorldTransform(prim)
+        transform.Orthonormalize()
+        position = np.array(transform.ExtractTranslation(), dtype=np.float32)
+        rotation = transform.ExtractRotationQuat()
+        orientation = np.array([rotation.GetReal(), *rotation.GetImaginary()], dtype=np.float32)
+        return position, orientation
+
+    def _robot_prim(self):
+        robot_path = f"/{self.Setup.robot_prim_name}"
+        try:
+            for prim in self._stage.Traverse():
+                if prim.GetPath().pathString == robot_path:
+                    return prim
+        except Exception:
+            return Usd.Prim()
+        return Usd.Prim()
+
+    def _set_robot_world_pose(self, position=None, orientation=None):
+        robot_prim_path = f"/{self.Setup.robot_prim_name}"
+        if position is not None:
+            self._set_prim_translation(robot_prim_path, position)
+        if orientation is not None:
+            yaw_degrees = np.degrees(robot_utils.quaternion_to_yaw_radians(orientation))
+            self._set_prim_yaw(robot_prim_path, yaw_degrees)
+
+    def _set_prim_translation(self, prim_path, translation):
+        prim = self._prim_by_path(prim_path)
+        if not prim or not prim.IsValid():
+            return
+        xformable = UsdGeom.Xformable(prim)
+        translate_op = self._get_or_add_xform_op(xformable, UsdGeom.XformOp.TypeTranslate, xformable.AddTranslateOp)
+        translate_op.Set(Gf.Vec3d(*np.asarray(translation, dtype=float)))
+
+    def _set_prim_yaw(self, prim_path, yaw_degrees):
+        prim = self._prim_by_path(prim_path)
+        if not prim or not prim.IsValid():
+            return
+        xformable = UsdGeom.Xformable(prim)
+        orient_op = self._get_or_add_xform_op(xformable, UsdGeom.XformOp.TypeOrient, xformable.AddOrientOp)
+        orient_op.Set(robot_utils.yaw_degrees_to_quaternion(yaw_degrees))
+
+    def _get_or_add_xform_op(self, xformable, op_type, add_op_fn):
+        for op in xformable.GetOrderedXformOps():
+            if op.GetOpType() == op_type:
+                return op
+        return add_op_fn()
+
+    def _prim_by_path(self, prim_path):
+        prim_path = str(prim_path)
+        try:
+            for prim in self._stage.Traverse():
+                if prim.GetPath().pathString == prim_path:
+                    return prim
+        except Exception:
+            return Usd.Prim()
+        return Usd.Prim()
+
+    def _set_robot_velocity(self, linear=None, angular=None):
+        position, orientation = self._robot_world_pose()
+        yaw_radians = robot_utils.quaternion_to_yaw_radians(orientation)
+        step_size = max(0.0, min(float(getattr(self, "_current_step_size", 1.0 / 60.0)), 0.1))
+        if angular is not None:
+            yaw_radians += float(np.asarray(angular)[2]) * step_size
+        if linear is not None:
+            position = position + np.asarray(linear, dtype=np.float32) * step_size
+        half_yaw = yaw_radians / 2.0
+        self._set_robot_world_pose(
+            position=position,
+            orientation=np.array([np.cos(half_yaw), 0.0, 0.0, np.sin(half_yaw)]),
+        )
 
     def __init__(self) -> None:
         super().__init__()
 
-        self.manual_control = False
 
+        self.manual_control = False
         # Box dimensions: 2x2m boxes, so circumscribed radius (center to corner) = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414m
         self.box_circumscribed_radius = np.sqrt(2.0)  # For 2x2m box
 
-        # Read start position and seed from YAML file
-        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
-        self.Setup = get_setup_from_name("setup_2")
-        if self.Setup is None:
-            raise ValueError("setup_2 not found in setups")
-        self.Setup._start_position = start_position
-        self.Setup._seed_nr = seed_nr
+        self._selected_setup_name = "setup_2"
+        self._load_setup_from_yaml()
 
         polygon_color = np.array([0.8, 0.6, 0.4])
         self.occupiable_space_polygons_ = [
@@ -88,6 +194,11 @@ class SegMap(BaseSample):
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
         self.dt = 0.0
+        self._current_step_size = 1.0 / 60.0
+        self._next_waypoint_number = 1
+        self._sim_step_callback_subscription = None
+        self._missions_started = False
+        self._mission_loop_logged = False
         
         # Map editing variables
         self._box_positions: Dict[str, Tuple[float, float]] = {}
@@ -100,6 +211,15 @@ class SegMap(BaseSample):
         self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
         self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
         self._teleop_warned_unavailable = False
+
+    def _load_setup_from_yaml(self):
+        """Load the selected setup and apply start position/seed from YAML."""
+        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
+        self.Setup = get_setup_from_name(self._selected_setup_name)
+        if self.Setup is None:
+            raise ValueError(f"{self._selected_setup_name} not found in setups")
+        self.Setup._start_position = start_position
+        self.Setup._seed_nr = seed_nr
 
     def _publish_map_integrity_ratio(self):
         """Publish the map integrity ratio (untouched boxes / total boxes)"""
@@ -122,29 +242,26 @@ class SegMap(BaseSample):
         Returns:
             Waypoint: Waypoint object with the given coordinates
         """
-        # Create a purple dynamic cube at the waypoint position
-        waypoint_name = f"waypoint_{x}_{y}".replace(".", "_")
-        waypoint_prim_path = f"/World/waypoints/{waypoint_name}"
+        waypoint_name = f"wp_{self._next_waypoint_number:02d}"
+        self._next_waypoint_number += 1
+        waypoint_prim_path = f"/map/waypoints/{waypoint_name}"
         
         # Create a static visual cube as waypoint marker
         try:
-            waypoint_cube = self._world.scene.add(
-                VisualCuboid(
-                    prim_path=waypoint_prim_path,
-                    name=waypoint_name,
-                    position=np.array([x, y, 0.0]),  # Slightly above ground
-                    scale=np.array([0.3, 0.3, 0.01]),  # Flat cube
-                    color=np.array([0.5, 0.0, 0.8])  # Purple color
-                )
-            )
+            waypoint_cube = UsdGeom.Cube.Define(self._stage, waypoint_prim_path)
+            waypoint_cube.CreateSizeAttr(1.0)
+            waypoint_cube.CreateDisplayColorAttr([Gf.Vec3f(0.5, 0.0, 0.8)])
+            waypoint_xform = UsdGeom.Xformable(waypoint_cube.GetPrim())
+            waypoint_xform.AddTranslateOp().Set(Gf.Vec3f(x, y, 0.0))
+            waypoint_xform.AddScaleOp().Set(Gf.Vec3f(0.3, 0.3, 0.01))
             print(f"Created waypoint {waypoint_name} at {x}, {y}")
         except Exception as e:
-            print(f"Waypoint {waypoint_name} already exists: {e}")
+            print(f"Failed to create waypoint marker {waypoint_name}: {e}")
             # Return the Waypoint object anyway so missions can still work
             return Waypoint(x, y)
         
         # Remove collision API from the waypoint cube (it's just a visual marker)
-        prim = self._stage.GetPrimAtPath(waypoint_prim_path)
+        prim = self._stage.GetPrimAtPath(Sdf.Path(waypoint_prim_path))
         if prim:
             # Remove any existing collision APIs
             collision_api = UsdPhysics.CollisionAPI.Get(self._stage, waypoint_prim_path)
@@ -158,10 +275,12 @@ class SegMap(BaseSample):
         Common setup code for missions and robot positioning.
         Sets up missions and moves robot to start position.
         """
+        self._next_waypoint_number = 1
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, _ = robot_utils.setup_missions(
             self.create_waypoint, missions_file_path=self.Setup.missions_yaml_path
         )
-        
+
+    def _position_robot_asset(self):
         # Move robot to start position - crash if not provided
         if not self.Setup.start_position or len(self.Setup.start_position) < 2:
             raise ValueError("start_position must be provided in Setup. No fallbacks allowed.")
@@ -170,37 +289,33 @@ class SegMap(BaseSample):
         start_yaw = robot_utils.get_start_yaw_degrees(self.Setup.start_position)
         robot_prim_path = f"/{self.Setup.robot_prim_name}"
 
-        isu.translate_object(self._stage, robot_prim_path, Gf.Vec3f(start_x, start_y, 0.0))
-        isu.rotate_object(self._stage, robot_prim_path, start_yaw)
-
-        if self._robot is not None:
-            self._robot.set_world_pose(
-                position=np.array([start_x, start_y, 0.0]),
-                orientation=robot_utils.yaw_degrees_to_orientation(start_yaw),
-            )
-            self.stop_motion()
+        self._set_prim_translation(robot_prim_path, (start_x, start_y, 0.0))
+        self._set_prim_yaw(robot_prim_path, start_yaw)
 
         # Move map coordinate system so that (0,0) is at bottom left corner
-        isu.translate_object(self._stage, f"/{self.Setup.robot_prim_name}/map", Gf.Vec3f(-start_x, -start_y, 0.0))
+        self._set_prim_translation(f"/{self.Setup.robot_prim_name}/map", (-start_x, -start_y, 0.0))
+
+    def _ensure_robot_asset(self):
+        robot_prim_path = f"/{self.Setup.robot_prim_name}"
+        robot_prim = self._robot_prim()
+        if not robot_prim or not robot_prim.IsValid():
+            isu.add_reference_to_stage(usd_path=self.Setup.mission_file, prim_path=robot_prim_path)
+            self._position_robot_asset()
 
     def setup_scene(self):
+        self.deregister_sim_step_callback()
+        self._missions_started = False
         isu.create_dome_light()
-        self._world = self.get_world()
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
-        isu.add_reference_to_stage(usd_path=self.Setup.mission_file, prim_path=f"/{self.Setup.robot_prim_name}")
-        self._robot = self._world.scene.add(Robot(prim_path=f"/{self.Setup.robot_prim_name}", name=self.Setup.robot_prim_name))
+        self._robot = None
 
-        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
-        self.Setup = get_setup_from_name("setup_2")
-        self.Setup._start_position = start_position
-        self.Setup._seed_nr = seed_nr
-
+        self._load_setup_from_yaml()
         self._setup_missions_and_robot_position()
 
     def move_towards_target(self, mission):
         # return
-        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        robot_current_position, robot_current_orientation = self._robot_world_pose()
         waypoint = mission.get_waypoint()
         
         # Calculate the direction vector from robot to waypoint
@@ -238,10 +353,10 @@ class SegMap(BaseSample):
         
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
-        self._robot.set_angular_velocity(angular_velocity)
+        self._set_robot_velocity(angular=angular_velocity)
         
 
-        print(f"Current yaw: {current_yaw_radians}, Target yaw: {target_yaw_radians}, Yaw error: {yaw_error}")
+        # print(f"Current yaw: {current_yaw_radians}, Target yaw: {target_yaw_radians}, Yaw error: {yaw_error}")
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
         
@@ -267,7 +382,7 @@ class SegMap(BaseSample):
                                         0.0])  # No vertical movement
         
         # Set the robot's linear velocity
-        self._robot.set_linear_velocity(linear_velocity_world)
+        self._set_robot_velocity(linear=linear_velocity_world)
         self._previous_speed = speed
         self._previous_angular_velocity_ = angular_velocity_z
         
@@ -276,7 +391,7 @@ class SegMap(BaseSample):
     def step_move_to_waypoint(self, mission, time):
         self.move_towards_target(mission)
 
-        done = robot_utils.check_if_at_waypoint(self._robot.get_world_pose, mission)
+        done = robot_utils.check_if_at_waypoint(self._robot_world_pose, mission)
         if done:
             mission.set_status(StatusType.SUCCESS)
             print(f"Setting mission status to SUCCESS")
@@ -284,11 +399,11 @@ class SegMap(BaseSample):
         return mission
 
     def stop_motion(self):
-        self._robot.set_linear_velocity(np.array([0.0, 0.0, 0.0]))
-        self._robot.set_angular_velocity(np.array([0.0, 0.0, 0.0]))
+        self._previous_speed = 0.0
+        self._previous_angular_velocity_ = 0.0
 
     def _enforce_planar_orientation(self):
-        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        robot_current_position, robot_current_orientation = self._robot_world_pose()
         current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
         half_yaw = current_yaw_radians / 2.0
         planar_orientation = np.array([
@@ -297,7 +412,7 @@ class SegMap(BaseSample):
             0.0,               # y (pitch)
             np.sin(half_yaw),  # z (yaw)
         ])
-        self._robot.set_world_pose(
+        self._set_robot_world_pose(
             position=robot_current_position,
             orientation=planar_orientation,
         )
@@ -313,7 +428,7 @@ class SegMap(BaseSample):
         self._teleop_sub.spin_once()
         linear_x, linear_y, angular_z = self._teleop_sub.get_latest_command(stale_timeout_sec=0.5)
 
-        robot_current_position, robot_current_orientation = self._robot.get_world_pose()
+        robot_current_position, robot_current_orientation = self._robot_world_pose()
         current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
 
         # Convert base-frame cmd_vel to world-frame velocity, then apply directly.
@@ -324,8 +439,7 @@ class SegMap(BaseSample):
             linear_x * sin_yaw + linear_y * cos_yaw,
             0.0,
         ])
-        self._robot.set_linear_velocity(linear_velocity_world)
-        self._robot.set_angular_velocity(np.array([0.0, 0.0, angular_z]))
+        self._set_robot_velocity(linear=linear_velocity_world, angular=np.array([0.0, 0.0, angular_z]))
 
         self._previous_speed = float(np.linalg.norm(linear_velocity_world[:2]))
         self._previous_angular_velocity_ = float(angular_z)
@@ -368,14 +482,30 @@ class SegMap(BaseSample):
                 self._misisons[self._current_mission_number].set_status(StatusType.IN_PROGRESS)
             else:
                 print(f"All missions completed - stopping simulation.")
-                self._world.stop()
+                app_utils.stop()
                 return
         if misssion.get_status() == StatusType.FAILED:
             self.stop_motion()
             print(f"Mission {self._current_mission_number} failed!")
 
     def custom_simulation_step(self, step_size):
-        time = self._simulation_context.current_time
+        if not app_utils.is_playing():
+            return
+        current_stage = omni.usd.get_context().get_stage()
+        if current_stage is None or getattr(self, "_stage", None) is not current_stage:
+            self.deregister_sim_step_callback()
+            self._missions_started = False
+            return
+        time = SimulationManager.get_simulation_time()
+        if not self._missions_started:
+            self._start_missions_from_timeline(time)
+        if not self._ensure_robot_ready():
+            return
+
+        self._current_step_size = step_size or max(0.0, time - self.previous_time_)
+        if not self._mission_loop_logged:
+            print(f"Mission loop active, step_size={self._current_step_size:.4f}")
+            self._mission_loop_logged = True
         self.dt = self.dt + time - self.previous_time_
 
         # Debug: Show simulation time occasionally
@@ -397,21 +527,25 @@ class SegMap(BaseSample):
         self.previous_time_ = time
 
     async def setup_post_load(self):
-        self._world = self.get_world()
-        self._robot = self._world.scene.get_object(self.Setup.robot_prim_name)
-        self.stop_motion()
+        self._robot = None
 
-        isu.set_camera_view(eye=[50,25,100], target=[50,25,0])
-        await isu.disable_gravity(UsdPhysics.Scene.Define(omni.usd.get_context().get_stage(), "/physicsScene"))
+        app_utils.stop()
+        await omni.kit.app.get_app().next_update_async()
+        self._ensure_robot_asset()
 
-        self._simulation_context = SimulationContext()
+        isu.set_camera_view(eye=[-45,-75,55], target=[-12,-12,0])
+        await isu.disable_gravity(self._stage)
 
-        self.previous_time_ = self._simulation_context.current_time
+        self.previous_time_ = SimulationManager.get_simulation_time()
         self.register_sim_step_callback()
+        app_utils.stop()
 
     async def setup_pre_reset(self):
         print("Pre Reset")
+        self.deregister_sim_step_callback()
         self.stop_motion()
+        self._missions_started = False
+        self._mission_loop_logged = False
         self._misisons = []
         self._current_mission_number = 0
         self._all_missions_completed = False
@@ -421,30 +555,25 @@ class SegMap(BaseSample):
         print("Reset edit_map state for clean restart")
 
     async def setup_post_reset(self):
-        self._world = self.get_world()
-        # Re-acquire the robot object after reset
-        try:
-            self._robot = self._world.scene.get_object(self.Setup.robot_prim_name)
-        except Exception:
-            # If not found, leave it as is; spawn/setup_scene should recreate it
-            self._robot = None
+        self._robot = None
 
-        # Recreate the simulation context used by the sim step callback
-        self._simulation_context = SimulationContext()
-
-        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
-        self.Setup = get_setup_from_name("setup_2")
-        self.Setup._start_position = start_position
-        self.Setup._seed_nr = seed_nr
-
-        # Ensure the sim-step callback is registered after a reset so missions get stepped
-        try:
-            self.register_sim_step_callback()
-        except Exception as e:
-            print(f"Warning: failed to register sim step callback after reset: {e}")
+        self._load_setup_from_yaml()
 
         self._setup_missions_and_robot_position()
+        app_utils.stop()
+        await omni.kit.app.get_app().next_update_async()
+        self._ensure_robot_asset()
+        self.register_sim_step_callback()
+        app_utils.stop()
         print("Post Reset")
+
+    async def setup_post_clear(self):
+        self.physics_cleanup()
+
+    def physics_cleanup(self):
+        self.deregister_sim_step_callback()
+        self._missions_started = False
+        self._mission_loop_logged = False
 
     def check_distance_to_boxes(self, position: Tuple[float, float], min_distance: float) -> bool:
         """
@@ -510,12 +639,11 @@ class SegMap(BaseSample):
         return self.get_systematic_position(min_distance_to_boxes * 0.7)
 
     async def _on_edit_world_event_async(self):
-        from isaacsim.core.utils.stage import get_current_stage
-        from isaacsim.core.utils.mesh import get_mesh_vertices_relative_to
+        import isaacsim.core.experimental.utils.stage as stage_utils
 
-        stage = get_current_stage()
-        mesh_prim = stage.GetPrimAtPath("/map/WoodenCrate_A1_1/WoodenCrate_A2")
-        coord_prim = stage.GetPrimAtPath("/map")
+        stage = stage_utils.get_current_stage(backend="usd")
+        mesh_prim = stage.GetPrimAtPath(Sdf.Path("/map/WoodenCrate_A1_1/WoodenCrate_A2"))
+        coord_prim = stage.GetPrimAtPath(Sdf.Path("/map"))
 
         if not mesh_prim or not mesh_prim.IsValid():
             print("Mesh prim not found: /map/WoodenCrate_A1_1/WoodenCrate_A2")
@@ -526,7 +654,14 @@ class SegMap(BaseSample):
 
         try:
             # Vertices in map frame
-            vertices = get_mesh_vertices_relative_to(mesh_prim, coord_prim)
+            mesh_points = UsdGeom.Mesh(mesh_prim).GetPointsAttr().Get()
+            xform_cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+            mesh_to_world = xform_cache.GetLocalToWorldTransform(mesh_prim)
+            world_to_coord = xform_cache.GetLocalToWorldTransform(coord_prim).GetInverse()
+            vertices = np.array([
+                world_to_coord.Transform(mesh_to_world.Transform(point))
+                for point in mesh_points
+            ])
             print(vertices)
         except Exception as e:
             print(f"Error fetching vertices: {e}")
@@ -566,7 +701,7 @@ class SegMap(BaseSample):
             isu.rotate_object(self._stage, prim_name, initial_rotation)
             
             # Apply collision API to the prim
-            prim = self._stage.GetPrimAtPath(prim_name)
+            prim = self._stage.GetPrimAtPath(Sdf.Path(prim_name))
             UsdPhysics.CollisionAPI.Apply(prim)
             
             # Store box position and rotation for later editing
@@ -620,7 +755,7 @@ class SegMap(BaseSample):
             # If all boxes have been returned, stop the simulation
             if remaining == 0:
                 print("All boxes returned to original positions - stopping simulation.")
-                self._world.stop()
+                app_utils.stop()
             return
         
         # Normal flow: move a box to a new position

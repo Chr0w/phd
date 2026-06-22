@@ -76,7 +76,7 @@ def get_all_setups(user: str = None):
             user=user,
             mission_file_path=f"/home/{user}/isaac_sim_files/robots/mir_bot_3/mir_bot_3.usd",
             missions_yaml_path=os.path.join(missions_dir, "mission_2.yaml"),
-            map_usd_path=f"/home/{user}/isaac_sim_files/maps/seg_map_2/seg_map_2.usd",
+            map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name="mir_bot_3",
         ),

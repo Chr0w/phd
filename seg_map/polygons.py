@@ -2,7 +2,6 @@ import numpy as np
 from typing import Tuple, Optional, Callable
 from pxr import UsdGeom, Gf
 import omni
-import omni.isaac.core.utils.prims as prim_utils
 
 
 class polygon:
@@ -111,15 +110,7 @@ async def add_polygon_at(poly: polygon, stage):
     """
     prim_path = f"/World/polygons/polygon_{poly.name}"
     
-    # Create the mesh prim
-    mesh_prim = prim_utils.create_prim(
-        prim_path,
-        "Mesh",
-        position=np.array([0.0, 0.0, 0.0]),  # Position will be handled by vertex coordinates
-    )
-    
-    # Get the mesh and set its geometry
-    mesh = UsdGeom.Mesh.Get(stage, prim_path)
+    mesh = UsdGeom.Mesh.Define(stage, prim_path)
     
     # Convert coordinates to 3D vertices (z=0 for flat polygon)
     vertices = np.array([

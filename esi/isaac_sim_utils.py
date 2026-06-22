@@ -1,17 +1,23 @@
 
-from isaacsim.core.utils.viewports import set_camera_view as _set_camera_view
-from omni.isaac.core.utils.stage import add_reference_to_stage as _add_reference_to_stage
-import omni.isaac.core.utils.prims as prim_utils
 import numpy as np
 from omni.physx.scripts import physicsUtils
-from pxr import Usd, UsdGeom, UsdPhysics, Gf
+from pxr import Usd, UsdGeom, UsdPhysics, Gf, UsdLux
 import omni
+from isaacsim.core.rendering_manager import ViewportManager
+import isaacsim.core.experimental.utils.stage as stage_utils
+
+def _get_prim(stage, prim_path):
+    prim_path = str(prim_path)
+    for prim in stage.Traverse():
+        if prim.GetPath().pathString == prim_path:
+            return prim
+    return None
 
 def set_camera_view(eye=[0,0,0], target=[0,0,0], camera_prim_path="/OmniverseKit_Persp"):
-    _set_camera_view(eye=eye, target=target, camera_prim_path=camera_prim_path)
+    ViewportManager.set_camera_view(camera=camera_prim_path, eye=eye, target=target)
 
 def add_reference_to_stage(usd_path, prim_path):
-    _add_reference_to_stage(usd_path=usd_path, prim_path=prim_path)
+    stage_utils.add_reference_to_stage(usd_path=usd_path, path=prim_path)
 
 def spawn_object(asset_path, prim_path):
     add_reference_to_stage(usd_path=asset_path, prim_path=prim_path)
@@ -20,7 +26,7 @@ def spawn_object(asset_path, prim_path):
     stage = omni.usd.get_context().get_stage()
     
     # Remove physical properties to make objects non-physical
-    prim = stage.GetPrimAtPath(prim_path)
+    prim = _get_prim(stage, prim_path)
     if prim:
         # Remove RigidBodyAPI if it exists
         rigid_body_api = UsdPhysics.RigidBodyAPI.Get(stage, prim_path)
@@ -40,21 +46,17 @@ def spawn_object(asset_path, prim_path):
 
 
 def create_dome_light(stage_path="/World/dome_light"):
-    light_1 = prim_utils.create_prim(
-        stage_path,
-        "DomeLight",
-        position=np.array([0.0, 0.0, 20.0]),
-        attributes={
-            "inputs:intensity": 1e3,
-        }
-    )
+    stage = stage_utils.get_current_stage(backend="usd")
+    light = UsdLux.DomeLight.Define(stage, stage_path)
+    light.CreateIntensityAttr(1e3)
+    translate_object(stage, stage_path, Gf.Vec3f(0.0, 0.0, 20.0))
 
 def _get_xformable(stage, prim_path):
-    prim = stage.GetPrimAtPath(prim_path)
+    prim = _get_prim(stage, prim_path)
     if not prim or not prim.IsValid():
         return None
-    mesh = UsdGeom.Mesh.Get(stage, prim_path)
-    if mesh:
+    if prim.IsA(UsdGeom.Mesh):
+        mesh = UsdGeom.Mesh(prim)
         return mesh
     return UsdGeom.Xformable(prim)
 
@@ -80,9 +82,19 @@ def rotate_object(stage, prim_path, rotation):
         physicsUtils.set_or_add_orient_op(xformable, rotation_quaternion)
 
 
-async def disable_gravity(scene):
-    scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-    scene.CreateGravityMagnitudeAttr().Set(0)
+async def disable_gravity(stage=None):
+    stage = stage or stage_utils.get_current_stage(backend="usd")
+    physics_scenes = [
+        UsdPhysics.Scene(prim)
+        for prim in stage.Traverse()
+        if prim.IsA(UsdPhysics.Scene)
+    ]
+    if not physics_scenes:
+        physics_scenes = [UsdPhysics.Scene.Define(stage, "/PhysicsScene")]
+
+    for scene in physics_scenes:
+        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
+        scene.CreateGravityMagnitudeAttr().Set(0.0)
     return
 
 
@@ -167,8 +179,8 @@ def _obb_overlap_sat(c1, A1, e1, c2, A2, e2):
 def prims_overlap_obb(prim_path_a: str, prim_path_b: str) -> bool:
     """Return True if two prims' oriented bounding boxes overlap (world frame)."""
     stage = omni.usd.get_context().get_stage()
-    prim_a = stage.GetPrimAtPath(prim_path_a)
-    prim_b = stage.GetPrimAtPath(prim_path_b)
+    prim_a = _get_prim(stage, prim_path_a)
+    prim_b = _get_prim(stage, prim_path_b)
     if not (prim_a and prim_a.IsValid() and prim_b and prim_b.IsValid()):
         return False
 

@@ -1,6 +1,6 @@
 # Mission 1: square-spiral waypoints around start (25,25)
 # Each entry is an [x, y] waypoint in meters
-start_position: [10, 40]
+start_position: [-32, 32]
 waypoints:
-  - [10, 10]
-  - [40, 10]
+  - [-30, 20]
+  - [-30, -20]

@@ -13,7 +13,7 @@ import omni.ext
 import omni.ui as ui
 import asyncio
 from isaacsim.examples.browser import get_instance as get_browser_instance
-from isaacsim.examples.interactive.base_sample import BaseSampleUITemplate
+from isaacsim.examples.base.base_sample_extension_experimental import BaseSampleUITemplate
 from isaacsim.examples.interactive.user_examples.seg_map.SegMap import SegMap
 from isaacsim.gui.components.ui_utils import btn_builder
 
@@ -23,29 +23,33 @@ class SegMapExtension(omni.ext.IExt):
         self.example_name = "SegMap"
         self.category = "1. My Scripts"
 
+        self.sample = SegMap()
         ui_kwargs = {
             "ext_id": ext_id,
             "file_path": os.path.abspath(__file__),
             "title": "Setup SegMap Calculation",
             "doc_link": "https://docs.isaacsim.omniverse.nvidia.com/latest/core_api_tutorials/tutorial_core_hello_world.html",
             "overview": "This Example introduces the user on how to do cool stuff with Isaac Sim through scripting in asynchronous mode.",
-            "sample": SegMap(),
+            "sample": self.sample,
         }
 
 
-        ui_handle = SegMapExtensionUI(**ui_kwargs)
+        self.ui_handle = SegMapExtensionUI(**ui_kwargs)
 
         # register the example with examples browser
         get_browser_instance().register_example(
             name=self.example_name,
-            execute_entrypoint=ui_handle.build_window,
-            ui_hook=ui_handle.build_ui,
+            ui_hook=self.ui_handle.build_ui,
             category=self.category,
         )
 
         return
 
     def on_shutdown(self):
+        if hasattr(self, "sample"):
+            self.sample.physics_cleanup()
+        if hasattr(self, "ui_handle"):
+            self.ui_handle.on_shutdown()
         get_browser_instance().deregister_example(name=self.example_name, category=self.category)
 
         return
@@ -82,17 +86,26 @@ class SegMapExtensionUI(BaseSampleUITemplate):
         asyncio.ensure_future(self.sample._on_edit_world_event_async())
         return
 
+    def _on_start_missions_event(self):
+        print("Start missions button pressed")
+        self.sample.start_missions()
+        self.task_ui_elements["Start missions"].enabled = False
+        return
+
     def post_reset_button_event(self):
         self.task_ui_elements["Add objects"].enabled = True
+        self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_load_button_event(self):
         self.task_ui_elements["Add objects"].enabled = True
+        self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_clear_button_event(self):
         # World needs to be loaded before objects can be added
         self.task_ui_elements["Add objects"].enabled = True
+        self.task_ui_elements["Start missions"].enabled = False
         return
 
     def build_task_controls_ui(self):
@@ -108,6 +121,17 @@ class SegMapExtensionUI(BaseSampleUITemplate):
 
             self.task_ui_elements["Add objects"] = btn_builder(**dict)
             self.task_ui_elements["Add objects"].enabled = False
+
+            start_missions_btn = {
+                "label": "Start missions",
+                "type": "button",
+                "text": "Start missions",
+                "tooltip": "Start waypoint mission execution",
+                "on_clicked_fn": self._on_start_missions_event,
+            }
+
+            self.task_ui_elements["Start missions"] = btn_builder(**start_missions_btn)
+            self.task_ui_elements["Start missions"].enabled = False
 
             edit_world_btn = {
                 "label": "Edit world",
