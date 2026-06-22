@@ -12,4 +12,4 @@ case ":${LD_LIBRARY_PATH:-}:" in
 esac
 
 # Run Isaac Sim
-$isaac_sim_package_path/isaac-sim.sh
+$isaac_sim_package_path/isaac-sim.sh --/persistent/isaac/asset_root/default="/home/chrdam/isaacsim_assets/Assets/Isaac/6.0"

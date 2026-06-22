@@ -2,5 +2,10 @@
 # Each entry is an [x, y] waypoint in meters
 start_position: [-32, 32]
 waypoints:
-  - [-30, 20]
   - [-30, -20]
+  - [-22, -25]
+  - [-22, -33]
+  - [-19, -25]
+  - [28, -25]
+  - [28, 25]
+  - [-32, 25]
