@@ -115,6 +115,24 @@ def spawn_point_instancer(stage, instancer_path, instances):
     return len(instances)
 
 
+def set_point_instancer_invisible_ids(stage, instancer_path, invisible_ids):
+    prim = stage.GetPrimAtPath(Sdf.Path(str(instancer_path)))
+    if not prim or not prim.IsValid():
+        return False
+
+    prim.SetActive(True)
+    instancer = UsdGeom.PointInstancer(prim)
+    if not invisible_ids:
+        instancer.VisAllIds(Usd.TimeCode.Default())
+        return True
+
+    attr = instancer.GetInvisibleIdsAttr()
+    if not attr:
+        attr = instancer.CreateInvisibleIdsAttr()
+    attr.Set([int(instance_id) for instance_id in invisible_ids])
+    return True
+
+
 def create_dome_light(stage_path="/World/dome_light"):
     stage = stage_utils.get_current_stage(backend="usd")
     light = UsdLux.DomeLight.Define(stage, stage_path)

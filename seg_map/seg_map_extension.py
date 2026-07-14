@@ -110,7 +110,7 @@ class SegMapExtensionUI(BaseSampleUITemplate):
                 "label": "Add objects",
                 "type": "button",
                 "text": "Spawn objects",
-                "tooltip": "Spawn assets one section at a time (section_1, then section_2, ...)",
+                "tooltip": "Spawn assets for all layout sections",
                 "on_clicked_fn": self._on_add_objects_event,
             }
 

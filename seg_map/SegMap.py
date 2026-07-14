@@ -189,6 +189,12 @@ class SegMap(BaseSample):
         self._original_box_rotations: Dict[str, float] = {}
         self._moved_boxes: set[str] = set()
         self._next_spawn_section_index = 0
+        self._section_bounds: Dict[str, dict] = {}
+        self._section_bin_marker_paths: Dict[str, list[str]] = {}
+        self._spawned_instancers: Dict[str, list[tuple[float, float]]] = {}
+        self._instance_visible_states: Dict[str, list[bool]] = {}
+        self._last_section_cull_time = -1.0
+        self._culling_active = False
         
         # ROS2 publisher wrapper
         self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
@@ -243,7 +249,79 @@ class SegMap(BaseSample):
 
     def _load_layout_config(self):
         self._layout_config = robot_utils.load_layout_config(self._layout_yaml_path())
+        self._section_bounds = robot_utils.layout_section_bounds(self._layout_config)
         return self._layout_config
+
+    def _init_section_culling_state(self):
+        self._section_bounds = robot_utils.layout_section_bounds(self._layout_config)
+        self._section_bin_marker_paths = {}
+        self._spawned_instancers = {}
+        self._instance_visible_states = {}
+        self._last_section_cull_time = -1.0
+        self._culling_active = False
+
+    def _reactivate_all_spawned_assets(self):
+        if not self._spawned_instancers or not getattr(self, "_stage", None):
+            return
+
+        for instancer_path, positions in self._spawned_instancers.items():
+            isu.set_point_instancer_invisible_ids(self._stage, instancer_path, [])
+            self._instance_visible_states[instancer_path] = [True] * len(positions)
+
+    def _stop_simulation(self):
+        app_utils.stop()
+        self._reactivate_all_spawned_assets()
+        self._culling_active = False
+
+    def _register_spawned_instancer(self, instancer_path: str, positions: list[tuple[float, float]]):
+        if not positions:
+            return
+        self._spawned_instancers[instancer_path] = positions
+        self._instance_visible_states[instancer_path] = [True] * len(positions)
+
+    def _update_asset_visibility(self, force=False):
+        if not self._spawned_instancers:
+            return
+
+        time = SimulationManager.get_simulation_time()
+        if (
+            not force
+            and self._last_section_cull_time >= 0.0
+            and (time - self._last_section_cull_time) < robot_utils.SECTION_CULL_UPDATE_INTERVAL_S
+        ):
+            return
+        self._last_section_cull_time = time
+
+        if not self._robot_prim().IsValid():
+            return
+
+        robot_position, _ = self._robot_world_pose()
+        robot_x = float(robot_position[0])
+        robot_y = float(robot_position[1])
+
+        for instancer_path, positions in self._spawned_instancers.items():
+            visible_states = self._instance_visible_states.get(instancer_path)
+            if visible_states is None or len(visible_states) != len(positions):
+                visible_states = [True] * len(positions)
+                self._instance_visible_states[instancer_path] = visible_states
+
+            invisible_ids: list[int] = []
+            instancer_changed = force
+            for index, (x, y) in enumerate(positions):
+                distance_m = robot_utils.distance_to_point(robot_x, robot_y, x, y)
+                currently_visible = visible_states[index]
+                should_be_visible = robot_utils.item_should_be_visible(distance_m, currently_visible)
+                if should_be_visible != currently_visible:
+                    instancer_changed = True
+                visible_states[index] = should_be_visible
+                if not should_be_visible:
+                    invisible_ids.append(index)
+
+            if not instancer_changed:
+                continue
+
+            if not isu.set_point_instancer_invisible_ids(self._stage, instancer_path, invisible_ids):
+                print(f"Warning: could not update instancer visibility at {instancer_path}")
 
     def _spawn_layout_waypoint(self, waypoint_id, x, y):
         prim_path = f"/map/waypoints/{waypoint_id}"
@@ -278,6 +356,8 @@ class SegMap(BaseSample):
         spawned = 0
         for section in layout.get("sections", []):
             section_id = str(section.get("id", "section"))
+            UsdGeom.Xform.Define(self._stage, f"/map/bins/{section_id}")
+            section_bin_paths: list[str] = []
             for bin_data in section.get("bins", []):
                 size_name = str(bin_data.get("size", "small"))
                 size_m = _BIN_SIZE_M.get(size_name)
@@ -296,7 +376,11 @@ class SegMap(BaseSample):
                 bin_number = int(bin_data.get("number", spawned + 1))
                 prim_path = f"/map/bins/{section_id}/bin_{bin_number:03d}"
                 self._spawn_bin_cube(prim_path, center_x, center_y, size_m)
+                section_bin_paths.append(prim_path)
                 spawned += 1
+
+            if section_bin_paths:
+                self._section_bin_marker_paths[section_id] = section_bin_paths
 
         print(f"Spawned {spawned} layout bin marker(s) from {self._layout_yaml_path()}")
 
@@ -361,6 +445,7 @@ class SegMap(BaseSample):
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
         self._load_layout_config()
+        self._init_section_culling_state()
         self._spawn_layout_bins()
         self._robot = None
 
@@ -557,7 +642,7 @@ class SegMap(BaseSample):
                 self._misisons[self._current_mission_number].set_status(StatusType.IN_PROGRESS)
             else:
                 print(f"All missions completed - stopping simulation.")
-                app_utils.stop()
+                self._stop_simulation()
                 return
         if misssion.get_status() == StatusType.FAILED:
             self.stop_motion()
@@ -565,7 +650,11 @@ class SegMap(BaseSample):
 
     def custom_simulation_step(self, step_size):
         if not app_utils.is_playing():
+            if self._culling_active:
+                self._reactivate_all_spawned_assets()
+                self._culling_active = False
             return
+        self._culling_active = True
         current_stage = omni.usd.get_context().get_stage()
         if current_stage is None or getattr(self, "_stage", None) is not current_stage:
             self.deregister_sim_step_callback()
@@ -576,6 +665,8 @@ class SegMap(BaseSample):
             self._start_missions_from_timeline(time)
         if not self._ensure_robot_ready():
             return
+
+        self._update_asset_visibility()
 
         self._current_step_size = step_size or max(0.0, time - self.previous_time_)
         if not self._mission_loop_logged:
@@ -626,6 +717,10 @@ class SegMap(BaseSample):
         self._original_box_rotations = {}
         self._last_printed_plan_number = None
         self._next_spawn_section_index = 0
+        self._spawned_instancers = {}
+        self._instance_visible_states = {}
+        self._last_section_cull_time = -1.0
+        self._culling_active = False
         print("Reset spawn state for clean restart")
 
     async def setup_post_reset(self):
@@ -649,9 +744,17 @@ class SegMap(BaseSample):
         self._missions_started = False
         self._mission_loop_logged = False
 
-    def _spawn_section_assets(self, section_id: str, asset_pools: dict[str, list[str]], section_index: int) -> int:
+    def _spawn_section_assets(
+        self,
+        section_id: str,
+        asset_pools: dict[str, list[str]],
+        section_index: int,
+        apply_visibility: bool = True,
+    ) -> int:
         rng = random.Random(self.Setup.seed_nr + section_index)
         spawned = 0
+
+        UsdGeom.Xform.Define(self._stage, f"/map/assets/{section_id}")
 
         for size, assets in asset_pools.items():
             bins = robot_utils.section_bins(self._layout_config, section_id, size)
@@ -682,7 +785,14 @@ class SegMap(BaseSample):
 
             instancer_path = f"/map/assets/{section_id}/{size}/instancer"
             spawned += isu.spawn_point_instancer(self._stage, instancer_path, instances)
+            positions = [(float(instance["x"]), float(instance["y"])) for instance in instances]
+            self._register_spawned_instancer(instancer_path, positions)
 
+        if apply_visibility:
+            if app_utils.is_playing():
+                self._update_asset_visibility(force=True)
+            else:
+                self._reactivate_all_spawned_assets()
         return spawned
 
     async def _on_add_objects_event_async(self):
@@ -712,13 +822,26 @@ class SegMap(BaseSample):
         if not asset_pools:
             return
 
-        section_id = section_ids[self._next_spawn_section_index]
-        spawned = self._spawn_section_assets(section_id, asset_pools, self._next_spawn_section_index)
-        self._next_spawn_section_index += 1
+        total_spawned = 0
+        start_index = self._next_spawn_section_index
+        while self._next_spawn_section_index < len(section_ids):
+            section_id = section_ids[self._next_spawn_section_index]
+            total_spawned += self._spawn_section_assets(
+                section_id,
+                asset_pools,
+                self._next_spawn_section_index,
+                apply_visibility=False,
+            )
+            self._next_spawn_section_index += 1
+            await omni.kit.app.get_app().next_update_async()
 
-        remaining = len(section_ids) - self._next_spawn_section_index
+        spawned_sections = self._next_spawn_section_index - start_index
+        if app_utils.is_playing():
+            self._update_asset_visibility(force=True)
+        else:
+            self._reactivate_all_spawned_assets()
+
         print(
-            f"Spawned {spawned} instanced asset(s) in {section_id} "
-            f"({self._next_spawn_section_index}/{len(section_ids)} sections complete, "
-            f"{remaining} remaining)"
+            f"Spawned {total_spawned} instanced asset(s) across "
+            f"{spawned_sections} section(s) ({self._next_spawn_section_index}/{len(section_ids)} total)"
         )
