@@ -13,7 +13,7 @@
 # Add the current directory to Python path to find local modules
 import os
 import sys
-import math
+import random
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
@@ -23,10 +23,8 @@ import isaac_sim_utils as isu
 import robot_utils
 from setups import get_setup_from_name
 import ros2_utils
-from mission import Mission, MissionType, Waypoint, StatusType
-from polygons import polygon, is_box_fit_in_occupiable_space, add_polygon_at, try_position_in_polygon
+from mission import MissionType, StatusType
 
-import random
 import numpy as np
 from typing import Dict, Tuple, Optional
 
@@ -36,6 +34,11 @@ import omni.kit.app
 from isaacsim.examples.base.base_sample_experimental import BaseSample
 import isaacsim.core.experimental.utils.app as app_utils
 from isaacsim.core.simulation_manager import SimulationManager
+
+_BIN_SIZE_M = {"large": 1.45, "small": 0.45}
+_BIN_HEIGHT_M = 0.02
+_BIN_COLOR = Gf.Vec3f(0.0, 0.8, 0.0)
+_BIN_OPACITY = 0.5
 
 
 # To link this repo with isaac sim:
@@ -164,48 +167,28 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        # Box dimensions: 2x2m boxes, so circumscribed radius (center to corner) = sqrt(1^2 + 1^2) = sqrt(2) ≈ 1.414m
-        self.box_circumscribed_radius = np.sqrt(2.0)  # For 2x2m box
-
-        self._selected_setup_name = "setup_2"
+        self._selected_setup_name = "setup_1"
         self._load_setup_from_yaml()
-
-        polygon_color = np.array([0.8, 0.6, 0.4])
-        self.occupiable_space_polygons_ = [
-            polygon(coordinates=[(14.6, 12), (23, 12), (23, 20.4)], color=polygon_color, name="occupiable_space_polygon_1"),
-            polygon(coordinates=[(12, 15), (12, 23), (20, 23)], color=polygon_color, name="occupiable_space_polygon_2"),
-            polygon(coordinates=[(35.4, 12), (27, 12), (27, 20.4)], color=polygon_color, name="occupiable_space_polygon_3"),
-            polygon(coordinates=[(38, 15), (38, 23), (30, 23)], color=polygon_color, name="occupiable_space_polygon_4"),
-            polygon(coordinates=[(14.6, 38), (23, 38), (23, 29.6)], color=polygon_color, name="occupiable_space_polygon_5"),
-            polygon(coordinates=[(12, 35), (12, 27), (20, 27)], color=polygon_color, name="occupiable_space_polygon_6"),
-            polygon(coordinates=[(35.4, 38), (27, 38), (27, 29.6)], color=polygon_color, name="occupiable_space_polygon_7"),
-            polygon(coordinates=[(38, 35), (38, 27), (30, 27)], color=polygon_color, name="occupiable_space_polygon_8"),
-            polygon(coordinates=[(0, 0), (8, 0), (8, 25), (0, 25)], color=polygon_color, name="occupiable_space_polygon_9"),
-            polygon(coordinates=[(0, 25), (8, 25), (8, 50), (0, 50)], color=polygon_color, name="occupiable_space_polygon_10"),
-            polygon(coordinates=[(8, 0), (29, 0), (29, 8), (8, 8)], color=polygon_color, name="occupiable_space_polygon_11"),
-            polygon(coordinates=[(29, 0), (50, 0), (50, 8), (29, 8)], color=polygon_color, name="occupiable_space_polygon_12"),
-            polygon(coordinates=[(42, 8), (50, 8), (50, 29), (42, 29)], color=polygon_color, name="occupiable_space_polygon_13"),
-            polygon(coordinates=[(42, 29), (50, 29), (50, 50), (42, 50)], color=polygon_color, name="occupiable_space_polygon_14"),
-            polygon(coordinates=[(8, 42), (25, 42), (25, 50), (8, 50)], color=polygon_color, name="occupiable_space_polygon_15"),
-            polygon(coordinates=[(25, 42), (42, 42), (42, 50), (25, 50)], color=polygon_color, name="occupiable_space_polygon_16"),
-        ]
 
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
         self.previous_time_ = 0.0
         self.dt = 0.0
         self._current_step_size = 1.0 / 60.0
-        self._next_waypoint_number = 1
+        self._layout_config = {}
+        self._waypoint_plans = []
+        self._plan_count = 0
+        self._last_printed_plan_number = None
         self._sim_step_callback_subscription = None
         self._missions_started = False
         self._mission_loop_logged = False
         
         # Map editing variables
         self._box_positions: Dict[str, Tuple[float, float]] = {}
-        self._original_box_positions: Dict[str, Tuple[float, float]] = {}  # Store original positions
-        self._original_box_rotations: Dict[str, float] = {}  # Store original rotations
+        self._original_box_positions: Dict[str, Tuple[float, float]] = {}
+        self._original_box_rotations: Dict[str, float] = {}
         self._moved_boxes: set[str] = set()
-        self._returned_boxes: set[str] = set()  # Track boxes that have been returned to original position
+        self._next_spawn_section_index = 0
         
         # ROS2 publisher wrapper
         self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
@@ -231,54 +214,118 @@ class SegMap(BaseSample):
         self._map_integrity_pub.publish_ratio(integrity_ratio)
         # print(f"Map integrity ratio: {integrity_ratio}")
 
-    def create_waypoint(self, x, y):
-        """
-        Create a visual waypoint marker and return a Waypoint object
-        
-        Args:
-            x (float): X coordinate of the waypoint
-            y (float): Y coordinate of the waypoint
-            
-        Returns:
-            Waypoint: Waypoint object with the given coordinates
-        """
-        waypoint_name = f"wp_{self._next_waypoint_number:02d}"
-        self._next_waypoint_number += 1
-        waypoint_prim_path = f"/map/waypoints/{waypoint_name}"
-        
-        # Create a static visual cube as waypoint marker
-        try:
-            waypoint_cube = UsdGeom.Cube.Define(self._stage, waypoint_prim_path)
-            waypoint_cube.CreateSizeAttr(1.0)
-            waypoint_cube.CreateDisplayColorAttr([Gf.Vec3f(0.5, 0.0, 0.8)])
-            waypoint_xform = UsdGeom.Xformable(waypoint_cube.GetPrim())
-            waypoint_xform.AddTranslateOp().Set(Gf.Vec3f(x, y, 0.0))
-            waypoint_xform.AddScaleOp().Set(Gf.Vec3f(0.3, 0.3, 0.01))
-            print(f"Created waypoint {waypoint_name} at {x}, {y}")
-        except Exception as e:
-            print(f"Failed to create waypoint marker {waypoint_name}: {e}")
-            # Return the Waypoint object anyway so missions can still work
-            return Waypoint(x, y)
-        
-        # Remove collision API from the waypoint cube (it's just a visual marker)
-        prim = self._stage.GetPrimAtPath(Sdf.Path(waypoint_prim_path))
+    def _configure_visual_cube(self, prim_path, translate, scale, color, opacity=None):
+        cube = UsdGeom.Cube.Define(self._stage, prim_path)
+        cube.CreateSizeAttr(1.0)
+        cube.CreateDisplayColorAttr([color])
+        if opacity is not None:
+            cube.CreateDisplayOpacityAttr([opacity])
+
+        xform = UsdGeom.Xformable(cube.GetPrim())
+        translate_op = self._get_or_add_xform_op(
+            xform, UsdGeom.XformOp.TypeTranslate, xform.AddTranslateOp
+        )
+        translate_op.Set(Gf.Vec3f(*translate))
+        scale_op = self._get_or_add_xform_op(
+            xform, UsdGeom.XformOp.TypeScale, xform.AddScaleOp
+        )
+        scale_op.Set(Gf.Vec3f(*scale))
+
+        prim = self._stage.GetPrimAtPath(Sdf.Path(prim_path))
         if prim:
-            # Remove any existing collision APIs
-            collision_api = UsdPhysics.CollisionAPI.Get(self._stage, waypoint_prim_path)
+            collision_api = UsdPhysics.CollisionAPI.Get(self._stage, prim_path)
             if collision_api:
                 collision_api.GetPrim().RemoveAPI(UsdPhysics.CollisionAPI)
-        
-        return Waypoint(x, y)
+
+    def _layout_yaml_path(self):
+        user = os.environ.get("USER", self.Setup.user)
+        return f"/home/{user}/devcontainer/ros2_ws/shared_files/layout.yaml"
+
+    def _load_layout_config(self):
+        self._layout_config = robot_utils.load_layout_config(self._layout_yaml_path())
+        return self._layout_config
+
+    def _spawn_layout_waypoint(self, waypoint_id, x, y):
+        prim_path = f"/map/waypoints/{waypoint_id}"
+        self._configure_visual_cube(
+            prim_path,
+            translate=(x, y, 0.0),
+            scale=(0.3, 0.3, 0.01),
+            color=Gf.Vec3f(0.5, 0.0, 0.8),
+        )
+
+    def _spawn_layout_waypoints(self, layout=None):
+        layout = layout if layout is not None else self._layout_config
+        waypoint_entries = robot_utils.layout_waypoint_entries(layout)
+        for waypoint_id, x, y in waypoint_entries:
+            self._spawn_layout_waypoint(waypoint_id, x, y)
+        print(f"Spawned {len(waypoint_entries)} layout waypoint marker(s)")
+
+    def _spawn_bin_cube(self, prim_path, center_x, center_y, size_m):
+        self._configure_visual_cube(
+            prim_path,
+            translate=(center_x, center_y, _BIN_HEIGHT_M / 2.0),
+            scale=(size_m, size_m, _BIN_HEIGHT_M),
+            color=_BIN_COLOR,
+            opacity=_BIN_OPACITY,
+        )
+
+    def _spawn_layout_bins(self, layout=None):
+        layout = layout if layout is not None else self._layout_config
+        if not layout:
+            return
+
+        spawned = 0
+        for section in layout.get("sections", []):
+            section_id = str(section.get("id", "section"))
+            for bin_data in section.get("bins", []):
+                size_name = str(bin_data.get("size", "small"))
+                size_m = _BIN_SIZE_M.get(size_name)
+                if size_m is None:
+                    print(f"Unknown bin size '{size_name}' in section {section_id}, skipping")
+                    continue
+
+                upper_left = bin_data.get("upper_left_m")
+                lower_right = bin_data.get("lower_right_m")
+                if not upper_left or not lower_right:
+                    print(f"Bin {bin_data.get('number')} in {section_id} missing coordinates, skipping")
+                    continue
+
+                center_x = (float(upper_left[0]) + float(lower_right[0])) / 2.0
+                center_y = (float(upper_left[1]) + float(lower_right[1])) / 2.0
+                bin_number = int(bin_data.get("number", spawned + 1))
+                prim_path = f"/map/bins/{section_id}/bin_{bin_number:03d}"
+                self._spawn_bin_cube(prim_path, center_x, center_y, size_m)
+                spawned += 1
+
+        print(f"Spawned {spawned} layout bin marker(s) from {self._layout_yaml_path()}")
 
     def _setup_missions_and_robot_position(self):
         """
         Common setup code for missions and robot positioning.
-        Sets up missions and moves robot to start position.
+        Generates 300 random shortest-path plans and creates missions from them.
         """
-        self._next_waypoint_number = 1
-        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission, _ = robot_utils.setup_missions(
-            self.create_waypoint, missions_file_path=self.Setup.missions_yaml_path
+        self._load_layout_config()
+        self._spawn_layout_waypoints()
+
+        seed = int(self.Setup.seed_nr)
+        self._waypoint_plans = robot_utils.generate_waypoint_plans(
+            self._layout_config,
+            num_plans=robot_utils.NUM_WAYPOINT_PLANS,
+            seed=seed,
+            start_waypoint_id=robot_utils.DEFAULT_START_WAYPOINT_ID,
         )
+        self._plan_count = len(self._waypoint_plans)
+
+        plans_path = robot_utils.waypoint_plans_path()
+        robot_utils.save_waypoint_plans(self._waypoint_plans, plans_path, seed)
+        print(f"Saved {self._plan_count} waypoint plans to {plans_path}")
+
+        positions = robot_utils.layout_waypoint_positions(self._layout_config)
+        self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = (
+            robot_utils.setup_missions_from_plans(self._waypoint_plans, positions)
+        )
+        self._last_printed_plan_number = None
 
     def _position_robot_asset(self):
         # Move robot to start position - crash if not provided
@@ -305,15 +352,37 @@ class SegMap(BaseSample):
     def setup_scene(self):
         self.deregister_sim_step_callback()
         self._missions_started = False
+        self._next_spawn_section_index = 0
+        self._box_positions = {}
+        self._original_box_positions = {}
+        self._original_box_rotations = {}
+        self._moved_boxes = set()
         isu.create_dome_light()
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
+        self._load_layout_config()
+        self._spawn_layout_bins()
         self._robot = None
 
         self._load_setup_from_yaml()
         self._setup_missions_and_robot_position()
 
+    def _maybe_print_plan_start(self, mission):
+        plan_number = mission.get_plan_number()
+        if plan_number is None or plan_number == self._last_printed_plan_number:
+            return
+
+        self._last_printed_plan_number = plan_number
+        path = mission.get_plan_path() or []
+        path_text = " -> ".join(path)
+        print(
+            f"Starting plan {plan_number} of {self._plan_count}: "
+            f"{mission.get_plan_start()} -> {mission.get_plan_target()} "
+            f"(path: {path_text})"
+        )
+
     def move_towards_target(self, mission):
+        self._maybe_print_plan_start(mission)
         # return
         robot_current_position, robot_current_orientation = self._robot_world_pose()
         waypoint = mission.get_waypoint()
@@ -370,8 +439,8 @@ class SegMap(BaseSample):
         if distance < 0.5:
             speed = max(speed * distance/2.5, 0.5)
 
-        if speed - self._previous_speed > 0.005: 
-            speed = self._previous_speed + 0.005
+        if speed - self._previous_speed > 0.05: 
+            speed = self._previous_speed + 0.05
         
         if speed > top_speed:
             speed = top_speed
@@ -450,7 +519,13 @@ class SegMap(BaseSample):
     def step_mission(self, time):
         #return
         if self._new_mission:
-            print(f"Starting mission nr {self._current_mission_number} (of {len(self._misisons)})")
+            mission = self._misisons[self._current_mission_number]
+            self._maybe_print_plan_start(mission)
+            print(
+                f"Starting mission leg {self._current_mission_number + 1} "
+                f"(of {len(self._misisons)}) "
+                f"plan {mission.get_plan_number()} -> {mission.get_waypoint_id()}"
+            )
             self._new_mission = False
 
         # Check if we have completed all missions
@@ -514,10 +589,6 @@ class SegMap(BaseSample):
             # Publish map integrity ratio every second
             self._publish_map_integrity_ratio()
 
-        # if self.dt > 4:
-        #     self.edit_map()
-        #     self.dt = 0.0
-
         self._enforce_planar_orientation()
 
         if self.manual_control:
@@ -550,9 +621,12 @@ class SegMap(BaseSample):
         self._current_mission_number = 0
         self._all_missions_completed = False
         self._moved_boxes = set()
-        self._returned_boxes = set()
+        self._box_positions = {}
+        self._original_box_positions = {}
         self._original_box_rotations = {}
-        print("Reset edit_map state for clean restart")
+        self._last_printed_plan_number = None
+        self._next_spawn_section_index = 0
+        print("Reset spawn state for clean restart")
 
     async def setup_post_reset(self):
         self._robot = None
@@ -575,243 +649,76 @@ class SegMap(BaseSample):
         self._missions_started = False
         self._mission_loop_logged = False
 
-    def check_distance_to_boxes(self, position: Tuple[float, float], min_distance: float) -> bool:
-        """
-        Check if a position is too close to any existing box.
-        
-        Args:
-            position: (x, y) position to check
-            min_distance: Minimum distance required to other boxes in meters
-            
-        Returns:
-            True if position is too close to any box, False otherwise
-        """
-        x, y = position
-        min_distance_squared = min_distance * min_distance
-        
-        for prim_name, box_pos in self._box_positions.items():
-            box_x, box_y = box_pos
-            
-            dx = x - box_x
-            dy = y - box_y
-            distance_squared = dx * dx + dy * dy
-            
-            if distance_squared < min_distance_squared:
-                return True
-        
-        return False
+    def _spawn_section_assets(self, section_id: str, asset_pools: dict[str, list[str]], section_index: int) -> int:
+        rng = random.Random(self.Setup.seed_nr + section_index)
+        spawned = 0
 
-    def get_random_not_free_space(self, seed, min_distance_to_boxes):
-        # Create a new random state for this box to ensure reproducibility
-        rng = np.random.RandomState(seed)
-        max_attempts = 500
-        attempts = 0
-        
-        while attempts < max_attempts:
-            random_space = (rng.randint(2, 48), rng.randint(2, 48))
-        
-            box_fits = is_box_fit_in_occupiable_space(random_space, self.box_circumscribed_radius, self.occupiable_space_polygons_)
-            too_close_to_box = self.check_distance_to_boxes(random_space, min_distance_to_boxes)
-            
-            if box_fits and not too_close_to_box:
-                return random_space
-            attempts += 1
-        
-        print(f"Warning: Could not find valid position after {max_attempts} attempts, trying systematic search")
-        return self.get_systematic_position(min_distance_to_boxes)
-    
-    def get_systematic_position(self, min_distance_to_boxes):
-        """Systematic search for valid position when random search fails"""
-        print(f"Starting systematic search for position with {min_distance_to_boxes}m minimum distance")
-        
-        for x in range(1, 49, 2):
-            for y in range(1, 49, 2):
-                position = (x, y)
-                
-                box_fits = is_box_fit_in_occupiable_space(position, self.box_circumscribed_radius, self.occupiable_space_polygons_)
-                too_close_to_box = self.check_distance_to_boxes(position, min_distance_to_boxes)
-                
-                if box_fits and not too_close_to_box:
-                    print(f"Found systematic position: {position}")
-                    return position
-        
-        print("Systematic search failed, trying with reduced distance")
-        return self.get_systematic_position(min_distance_to_boxes * 0.7)
+        for size, assets in asset_pools.items():
+            bins = robot_utils.section_bins(self._layout_config, section_id, size)
+            if not bins:
+                continue
 
-    async def _on_edit_world_event_async(self):
-        import isaacsim.core.experimental.utils.stage as stage_utils
+            instances = []
+            for bin_data in bins:
+                asset_path = rng.choice(assets)
+                rotation = rng.uniform(0.0, 360.0)
+                bin_number = bin_data["number"]
+                logical_name = f"/map/assets/{section_id}/{size}/bin_{bin_number:03d}"
 
-        stage = stage_utils.get_current_stage(backend="usd")
-        mesh_prim = stage.GetPrimAtPath(Sdf.Path("/map/WoodenCrate_A1_1/WoodenCrate_A2"))
-        coord_prim = stage.GetPrimAtPath(Sdf.Path("/map"))
+                instances.append(
+                    {
+                        "asset_path": asset_path,
+                        "x": bin_data["center_x"],
+                        "y": bin_data["center_y"],
+                        "z": 0.0,
+                        "yaw_degrees": rotation,
+                    }
+                )
 
-        if not mesh_prim or not mesh_prim.IsValid():
-            print("Mesh prim not found: /map/WoodenCrate_A1_1/WoodenCrate_A2")
-            return
-        if not coord_prim or not coord_prim.IsValid():
-            print("Coord prim not found: /map")
-            return
+                position = (bin_data["center_x"], bin_data["center_y"])
+                self._box_positions[logical_name] = position
+                self._original_box_positions[logical_name] = position
+                self._original_box_rotations[logical_name] = rotation
 
-        try:
-            # Vertices in map frame
-            mesh_points = UsdGeom.Mesh(mesh_prim).GetPointsAttr().Get()
-            xform_cache = UsdGeom.XformCache(Usd.TimeCode.Default())
-            mesh_to_world = xform_cache.GetLocalToWorldTransform(mesh_prim)
-            world_to_coord = xform_cache.GetLocalToWorldTransform(coord_prim).GetInverse()
-            vertices = np.array([
-                world_to_coord.Transform(mesh_to_world.Transform(point))
-                for point in mesh_points
-            ])
-            print(vertices)
-        except Exception as e:
-            print(f"Error fetching vertices: {e}")
+            instancer_path = f"/map/assets/{section_id}/{size}/instancer"
+            spawned += isu.spawn_point_instancer(self._stage, instancer_path, instances)
 
+        return spawned
 
     async def _on_add_objects_event_async(self):
-        asset_path = f"/home/{self.Setup.user}/isaac_sim_files/collection/wooden_box_2x2m/wooden_box_2x2m.usd"
-        
-        self._box_positions = {}
-        self._original_box_positions = {}
-        self._original_box_rotations = {}
-        self._moved_boxes = set()
-        self._returned_boxes = set()
+        if not self._layout_config:
+            self._load_layout_config()
 
-        # Create polygons for occupiable spaces
-        # for p in self.occupiable_space_polygons_:
-        #     await add_polygon_at(p, self._stage)
-
-        # Set fixed seed for reproducible box arrangement
-        np.random.seed(self.Setup.seed_nr)
-        random.seed(self.Setup.seed_nr)
-        
-        for i in range(10):
-            prim_name = f"/map/WoodenCrate_A1_{i}"
-            # Use a combined seed that includes both seed_nr and box index for reproducibility
-            box_seed = self.Setup.seed_nr * 1000 + i
-            np.random.seed(box_seed)
-            random_pos = self.get_random_not_free_space(seed=box_seed, min_distance_to_boxes=2 * self.box_circumscribed_radius)
-
-            isu.spawn_object(asset_path, prim_name)
-            isu.translate_object(self._stage, prim_name, Gf.Vec3f(random_pos[0], random_pos[1], 0.0))
-            
-            # Apply fixed rotation to initial box placement (reproducible)
-            # Use numpy random for consistency with position generation
-            np.random.seed(box_seed + 10000)  # Offset to get different random sequence for rotation
-            initial_rotation = np.random.uniform(0, 360)
-            isu.rotate_object(self._stage, prim_name, initial_rotation)
-            
-            # Apply collision API to the prim
-            prim = self._stage.GetPrimAtPath(Sdf.Path(prim_name))
-            UsdPhysics.CollisionAPI.Apply(prim)
-            
-            # Store box position and rotation for later editing
-            self._box_positions[prim_name] = random_pos
-            self._original_box_positions[prim_name] = random_pos  # Store original position
-            self._original_box_rotations[prim_name] = initial_rotation  # Store original rotation
-        
-        print(f"Created {len(self._box_positions)} boxes for edit_map functionality (reproducible arrangement)")
-
-    def edit_map(self) -> None:
-        """
-        Edit the map by moving a random box to a new location.
-        First picks a random occupiable polygon, then tries positions within it.
-        When all boxes have been moved, move them back to original positions one by one.
-        """
-        if not self._box_positions:
-            print(f"edit_map: No boxes available to move (box_positions is empty)")
+        section_ids = robot_utils.layout_section_ids(self._layout_config)
+        if not section_ids:
+            print("No sections found in layout config")
             return
-        
-        unmoved_boxes = [name for name in self._box_positions.keys() if name not in self._moved_boxes]
-        
-        # If we've started returning boxes, continue until all are returned
-        # OR if all boxes have been moved, start moving them back to original positions
-        if self._returned_boxes or not unmoved_boxes:
-            # Get boxes that haven't been returned yet (use original_box_positions as source of truth)
-            unreturned_boxes = [name for name in self._original_box_positions.keys() if name not in self._returned_boxes]
-            if not unreturned_boxes:
-                # All boxes have been returned, stop simulation (handled after last box is moved)
-                return
-            
-            # Pick a random box to return to original position
-            prim_name = random.choice(unreturned_boxes)
-            original_pos = self._original_box_positions[prim_name]
-            original_rotation = self._original_box_rotations[prim_name]
-            current_pos = self._box_positions[prim_name]
-            print(f"Returning box {prim_name} from position {current_pos} to original position {original_pos}")
-            
-            # Move box back to original position and rotation
-            isu.translate_object(self._stage, prim_name, Gf.Vec3f(original_pos[0], original_pos[1], 0.0))
-            isu.rotate_object(self._stage, prim_name, original_rotation)
-            
-            # Update position and mark as returned
-            self._box_positions[prim_name] = original_pos
-            self._returned_boxes.add(prim_name)
-            # Remove from moved_boxes since it's back in original position (counts as untouched again)
-            self._moved_boxes.discard(prim_name)
-            remaining = len(self._original_box_positions) - len(self._returned_boxes)
-            print(f"Remaining boxes to return: {remaining}")
-            self._publish_map_integrity_ratio()
-            
-            # If all boxes have been returned, stop the simulation
-            if remaining == 0:
-                print("All boxes returned to original positions - stopping simulation.")
-                app_utils.stop()
-            return
-        
-        # Normal flow: move a box to a new position
-        prim_name = random.choice(unmoved_boxes)
-        old_pos = self._box_positions[prim_name]
-        print(f"Moving box {prim_name} from position {old_pos}")
 
-        # Try to find a new position by randomly selecting polygons
-        new_pos = None
-        max_attempts = 100
-        
-        # Track only the last 3 polygons used to avoid immediately repeating them
-        recent_polygons = []
-        
-        while new_pos is None:
-            # Get polygons that aren't in the last 3 used
-            available_polygons = [p for p in self.occupiable_space_polygons_ if p not in recent_polygons]
-            
-            # If all polygons are in recent list, use all polygons (shouldn't happen with 16+ polygons)
-            if not available_polygons:
-                available_polygons = self.occupiable_space_polygons_
-            
-            # Randomly pick a polygon from available ones (using numpy for better randomness)
-            poly = np.random.choice(available_polygons)
-            
-            # Add to recent list and keep only last 3
-            recent_polygons.append(poly)
-            if len(recent_polygons) > math.floor(len(self.occupiable_space_polygons_)*0.2):
-                recent_polygons.pop(0)
-            
-            new_pos = try_position_in_polygon(
-                poly, 
-                self.box_circumscribed_radius,
-                2 * self.box_circumscribed_radius,  # Need 2x radius to prevent overlap
-                self.check_distance_to_boxes,
-                max_attempts=max_attempts
+        if self._next_spawn_section_index >= len(section_ids):
+            print(
+                f"Warning: all {len(section_ids)} section(s) already spawned; "
+                "ignoring spawn request"
             )
-            
-            if new_pos is None:
-                max_attempts *= 2
-                print(f"No valid position found in polygon {poly.name}, increasing attempts to {max_attempts} and trying another polygon")
-        
-        # Generate random rotation (use box name for variation, but still somewhat random)
-        # Use hash of box name + current time to get different rotation per box
-        rotation_seed = hash(prim_name) % 10000
-        np.random.seed(rotation_seed)
-        random_rotation = np.random.uniform(0, 360)
-        
-        # Move the box to the new position
-        isu.translate_object(self._stage, prim_name, Gf.Vec3f(new_pos[0], new_pos[1], 0.0))
-        
-        # Apply random rotation to the box
-        isu.rotate_object(self._stage, prim_name, random_rotation)
-        
-        # Update the box positions dictionary
-        self._box_positions[prim_name] = new_pos
-        self._moved_boxes.add(prim_name)
-        print(f"Remaining unmoved boxes: {len(self._box_positions) - len(self._moved_boxes)}")
-        self._publish_map_integrity_ratio()
+            return
+
+        asset_pools = {}
+        for size in ("large", "small"):
+            assets = robot_utils.list_bin_assets(self.Setup.user, size)
+            if not assets:
+                print(f"No {size} assets found in {robot_utils.bin_assets_dir(self.Setup.user, size)}")
+            else:
+                asset_pools[size] = assets
+
+        if not asset_pools:
+            return
+
+        section_id = section_ids[self._next_spawn_section_index]
+        spawned = self._spawn_section_assets(section_id, asset_pools, self._next_spawn_section_index)
+        self._next_spawn_section_index += 1
+
+        remaining = len(section_ids) - self._next_spawn_section_index
+        print(
+            f"Spawned {spawned} instanced asset(s) in {section_id} "
+            f"({self._next_spawn_section_index}/{len(section_ids)} sections complete, "
+            f"{remaining} remaining)"
+        )

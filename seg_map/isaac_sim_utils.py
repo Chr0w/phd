@@ -1,7 +1,9 @@
 
+import math
+
 import numpy as np
 from omni.physx.scripts import physicsUtils
-from pxr import Usd, UsdGeom, UsdPhysics, Gf, UsdLux
+from pxr import Usd, UsdGeom, UsdPhysics, Gf, UsdLux, Sdf
 import omni
 from isaacsim.core.rendering_manager import ViewportManager
 import isaacsim.core.experimental.utils.stage as stage_utils
@@ -43,6 +45,74 @@ def spawn_object(asset_path, prim_path):
         for schema in physics_schemas:
             if "Physics" in schema:
                 prim.RemoveAPI(schema)
+
+
+def _strip_rigid_bodies_recursive(stage, prim_path):
+    """Remove RigidBodyAPI only, preserving mesh colliders for lidar."""
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return
+
+    stack = [prim]
+    while stack:
+        current = stack.pop()
+        if UsdPhysics.RigidBodyAPI.Get(stage, current.GetPath()):
+            current.RemoveAPI(UsdPhysics.RigidBodyAPI)
+        stack.extend(current.GetChildren())
+
+
+def _yaw_degrees_to_quat_h(yaw_degrees):
+    half_yaw = math.radians(float(yaw_degrees)) / 2.0
+    return Gf.Quath(math.cos(half_yaw), 0.0, 0.0, math.sin(half_yaw))
+
+
+def spawn_point_instancer(stage, instancer_path, instances):
+    """
+    Spawn many assets efficiently via UsdGeomPointInstancer.
+
+    Each instance dict requires: asset_path, x, y, yaw_degrees.
+    Optional keys: z (defaults to 0).
+
+    Prototype assets keep their preset collider/mesh geometry for lidar but
+    have RigidBodyAPI stripped so they do not participate in simulation.
+    """
+    if not instances:
+        return 0
+
+    unique_assets = list(dict.fromkeys(instance["asset_path"] for instance in instances))
+    prototypes_root = f"{instancer_path}/Prototypes"
+    proto_paths = []
+
+    for index, asset_path in enumerate(unique_assets):
+        proto_path = f"{prototypes_root}/proto_{index:02d}"
+        add_reference_to_stage(asset_path, proto_path)
+        _strip_rigid_bodies_recursive(stage, proto_path)
+        proto_paths.append(proto_path)
+
+    instancer = UsdGeom.PointInstancer.Define(stage, instancer_path)
+    instancer.CreatePrototypesRel().SetTargets([Sdf.Path(path) for path in proto_paths])
+
+    asset_to_index = {asset_path: index for index, asset_path in enumerate(unique_assets)}
+    positions = []
+    orientations = []
+    proto_indices = []
+
+    for instance in instances:
+        positions.append(
+            Gf.Vec3f(
+                float(instance["x"]),
+                float(instance["y"]),
+                float(instance.get("z", 0.0)),
+            )
+        )
+        orientations.append(_yaw_degrees_to_quat_h(instance["yaw_degrees"]))
+        proto_indices.append(asset_to_index[instance["asset_path"]])
+
+    instancer.CreatePositionsAttr(positions)
+    instancer.CreateOrientationsAttr(orientations)
+    instancer.CreateProtoIndicesAttr(proto_indices)
+
+    return len(instances)
 
 
 def create_dome_light(stage_path="/World/dome_light"):

@@ -2,11 +2,10 @@ import os
 import random
 
 class Setup():
-    def __init__(self, name: str, user: str, mission_file_path: str, missions_yaml_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None) -> None:
+    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None) -> None:
         self._name = name
         self._user = user
         self._mission_file = mission_file_path
-        self._missions_yaml_path = missions_yaml_path
         self._map_usd_path = map_usd_path
         self._seed_nr = seed_nr
         self._robot_prim_name = robot_prim_name
@@ -23,10 +22,6 @@ class Setup():
     def mission_file(self):
         return self._mission_file
 
-    @property
-    def missions_yaml_path(self):
-        return self._missions_yaml_path
-    
     @property
     def map_usd_path(self):
         return self._map_usd_path
@@ -59,23 +54,11 @@ def get_all_setups(user: str = None):
     if user is None:
         user = os.environ.get("USER", "unknown")
 
-    missions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "missions")
-    
     setups = [
         Setup(
             name="setup_1",
             user=user,
             mission_file_path=f"/home/{user}/isaac_sim_files/robots/mir_bot_3/mir_bot_3.usd",
-            missions_yaml_path=os.path.join(missions_dir, "mission_1.yaml"),
-            map_usd_path=f"/home/{user}/isaac_sim_files/maps/seg_map_1/seg_map_1.usd",
-            seed_nr=1,
-            robot_prim_name="mir_bot_3",
-        ),
-        Setup(
-            name="setup_2",
-            user=user,
-            mission_file_path=f"/home/{user}/isaac_sim_files/robots/mir_bot_3/mir_bot_3.usd",
-            missions_yaml_path=os.path.join(missions_dir, "mission_2.yaml"),
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name="mir_bot_3",

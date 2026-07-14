@@ -20,7 +20,18 @@ class StatusType(Enum):
     IN_PROGRESS = "IN_PROGRESS"
 
 class Mission:
-    def __init__(self, mission_number: int, mission_type: MissionType, waypoint: Optional[Waypoint] = None, pause_time: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        mission_number: int,
+        mission_type: MissionType,
+        waypoint: Optional[Waypoint] = None,
+        pause_time: Optional[float] = None,
+        plan_number: Optional[int] = None,
+        waypoint_id: Optional[str] = None,
+        plan_start: Optional[str] = None,
+        plan_target: Optional[str] = None,
+        plan_path: Optional[list[str]] = None,
+    ) -> None:
         """
         Initialize a mission
         
@@ -29,12 +40,22 @@ class Mission:
             mission_type: Type of mission (MOVE_TO_WAYPOINT or PAUSE)
             waypoint: Target waypoint for MOVE_TO_WAYPOINT missions
             pause_time: Duration for PAUSE missions
+            plan_number: Generated plan index this mission belongs to
+            waypoint_id: Layout waypoint id for this mission leg
+            plan_start: Start waypoint id for the plan
+            plan_target: Target waypoint id for the plan
+            plan_path: Full shortest-path node list for the plan
         """
         self._mission_number: int = mission_number
         self._status: StatusType = StatusType.NOT_STARTED
         self._type: MissionType = mission_type
         self._waypoint: Optional[Waypoint] = waypoint
         self._pause_time: Optional[float] = pause_time
+        self._plan_number: Optional[int] = plan_number
+        self._waypoint_id: Optional[str] = waypoint_id
+        self._plan_start: Optional[str] = plan_start
+        self._plan_target: Optional[str] = plan_target
+        self._plan_path: Optional[list[str]] = plan_path
     def __str__(self) -> str:
         """String representation of the mission"""
         result = "-------------\n"
@@ -68,3 +89,18 @@ class Mission:
     def get_pause_time(self) -> Optional[float]:
         """Get the mission pause time"""
         return self._pause_time
+
+    def get_plan_number(self) -> Optional[int]:
+        return self._plan_number
+
+    def get_waypoint_id(self) -> Optional[str]:
+        return self._waypoint_id
+
+    def get_plan_start(self) -> Optional[str]:
+        return self._plan_start
+
+    def get_plan_target(self) -> Optional[str]:
+        return self._plan_target
+
+    def get_plan_path(self) -> Optional[list[str]]:
+        return self._plan_path

@@ -81,11 +81,6 @@ class SegMapExtensionUI(BaseSampleUITemplate):
         # self.task_ui_elements["Add objects"].enabled = False
         return
 
-    def _on_edit_world_event(self):
-        print("Edit world button pressed")
-        asyncio.ensure_future(self.sample._on_edit_world_event_async())
-        return
-
     def _on_start_missions_event(self):
         print("Start missions button pressed")
         self.sample.start_missions()
@@ -115,7 +110,7 @@ class SegMapExtensionUI(BaseSampleUITemplate):
                 "label": "Add objects",
                 "type": "button",
                 "text": "Spawn objects",
-                "tooltip": "1m² objects",
+                "tooltip": "Spawn assets one section at a time (section_1, then section_2, ...)",
                 "on_clicked_fn": self._on_add_objects_event,
             }
 
@@ -132,14 +127,3 @@ class SegMapExtensionUI(BaseSampleUITemplate):
 
             self.task_ui_elements["Start missions"] = btn_builder(**start_missions_btn)
             self.task_ui_elements["Start missions"].enabled = False
-
-            edit_world_btn = {
-                "label": "Edit world",
-                "type": "button",
-                "text": "Edit world",
-                "tooltip": "Edit world",
-                "on_clicked_fn": self._on_edit_world_event,
-            }
-
-            self.task_ui_elements["Edit world"] = btn_builder(**edit_world_btn)
-            self.task_ui_elements["Edit world"].enabled = True
