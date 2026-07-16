@@ -1,4 +1,5 @@
 import random
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -60,6 +61,15 @@ def compute_storage_utilization(occupied: int, total: int) -> float:
     if total <= 0:
         return 0.0
     return max(0.0, min(1.0, float(occupied) / float(total)))
+
+
+@dataclass(frozen=True)
+class SimProgress:
+    total_test_time_minutes: float
+    percentage_complete: float
+    minutes_passed: float
+    minutes_left: float
+    estimated_real_minutes_to_completion: float
 
 
 class BinAssetManager:
@@ -146,6 +156,37 @@ class BinAssetManager:
         for section_id, size in self._group_keys:
             self._rebuild_group(section_id, size)
 
+    def clear_all(self) -> None:
+        self._occupied = set()
+        self._instances = {}
+        for section_id, size in self._group_keys:
+            instancer_path = self._instancer_path(section_id, size)
+            prim = self._stage.GetPrimAtPath(Sdf.Path(instancer_path))
+            if prim and prim.IsValid():
+                self._stage.RemovePrim(Sdf.Path(instancer_path))
+
+    def spawn_all(self) -> int:
+        self.clear_all()
+        return self.set_occupied_bins(set(self._bin_catalog.keys()))
+
+    def spawn_section(self, section_id: str) -> int:
+        section_keys = {
+            key
+            for key, bin_data in self._bin_catalog.items()
+            if bin_data["section_id"] == section_id
+        }
+        for bin_key in section_keys:
+            if bin_key in self._occupied:
+                self.remove_bin(bin_key)
+        spawned = 0
+        for bin_key in sorted(section_keys):
+            if self._add_bin_internal(bin_key):
+                spawned += 1
+        for size in robot_utils.BIN_ASSET_SIZES:
+            if any(self._bin_catalog[key]["size"] == size for key in section_keys):
+                self._rebuild_group(section_id, size)
+        return spawned
+
     def set_occupied_bins(self, bin_keys: set[str]) -> int:
         self._occupied = set()
         self._instances = {}
@@ -226,6 +267,11 @@ class LayoutDevelopmentController:
         self._last_event_time: Optional[float] = None
         self._started = False
         self._finished = False
+        self._wall_start_time: Optional[float] = None
+
+    @property
+    def asset_manager(self) -> BinAssetManager:
+        return self._asset_manager
 
     @property
     def config(self) -> LayoutDevelopmentModeConfig:
@@ -249,6 +295,7 @@ class LayoutDevelopmentController:
         self._started = True
         self._start_sim_time = sim_time
         self._last_event_time = sim_time
+        self._wall_start_time = time.monotonic()
 
         initial_count = self._initial_occupied_count()
         all_keys = list(self._asset_manager._bin_catalog.keys())
@@ -274,6 +321,34 @@ class LayoutDevelopmentController:
             return False
         elapsed_minutes = (sim_time - self._start_sim_time) / 60.0
         return elapsed_minutes >= self._config.runtime_minutes
+
+    def test_progress(self, sim_time: float) -> Optional[SimProgress]:
+        if not self._started or self._start_sim_time is None:
+            return None
+
+        total_minutes = float(self._config.runtime_minutes)
+        minutes_passed = max(0.0, (sim_time - self._start_sim_time) / 60.0)
+        minutes_left = max(0.0, total_minutes - minutes_passed)
+        if total_minutes > 0.0:
+            percentage_complete = min(100.0, (minutes_passed / total_minutes) * 100.0)
+        else:
+            percentage_complete = 100.0
+
+        estimated_real_minutes_to_completion = minutes_left
+        if self._wall_start_time is not None and percentage_complete > 0.0:
+            real_minutes_passed = (time.monotonic() - self._wall_start_time) / 60.0
+            estimated_total_real_minutes = real_minutes_passed / (percentage_complete / 100.0)
+            estimated_real_minutes_to_completion = max(
+                0.0, estimated_total_real_minutes - real_minutes_passed
+            )
+
+        return SimProgress(
+            total_test_time_minutes=total_minutes,
+            percentage_complete=percentage_complete,
+            minutes_passed=minutes_passed,
+            minutes_left=minutes_left,
+            estimated_real_minutes_to_completion=estimated_real_minutes_to_completion,
+        )
 
     def update(self, sim_time: float) -> None:
         if not self._started or self._finished:
@@ -346,3 +421,9 @@ class LayoutDevelopmentController:
             if not occupied:
                 break
         return False
+
+    def clear_all_objects(self) -> None:
+        self._asset_manager.clear_all()
+
+    def spawn_all_objects(self) -> int:
+        return self._asset_manager.spawn_all()

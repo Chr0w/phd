@@ -75,6 +75,16 @@ class SegMapExtensionUI(BaseSampleUITemplate):
             ):
                 self.build_task_controls_ui()
 
+    def _on_spawn_all_objects_event(self):
+        print("Spawn all objects button pressed")
+        asyncio.ensure_future(self.sample._on_spawn_all_objects_event_async())
+        return
+
+    def _on_clear_all_objects_event(self):
+        print("Clear all objects button pressed")
+        asyncio.ensure_future(self.sample._on_clear_all_objects_event_async())
+        return
+
     def _on_start_missions_event(self):
         print("Start missions button pressed")
         self.sample.start_missions()
@@ -82,19 +92,45 @@ class SegMapExtensionUI(BaseSampleUITemplate):
         return
 
     def post_reset_button_event(self):
+        self.task_ui_elements["Spawn all objects"].enabled = True
+        self.task_ui_elements["Clear all objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_load_button_event(self):
+        self.task_ui_elements["Spawn all objects"].enabled = True
+        self.task_ui_elements["Clear all objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_clear_button_event(self):
+        self.task_ui_elements["Spawn all objects"].enabled = True
+        self.task_ui_elements["Clear all objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = False
         return
 
     def build_task_controls_ui(self):
         with ui.VStack(spacing=5):
+            spawn_all_btn = {
+                "label": "Spawn all objects",
+                "type": "button",
+                "text": "Spawn all objects",
+                "tooltip": "Clear all objects and spawn random assets in every bin",
+                "on_clicked_fn": self._on_spawn_all_objects_event,
+            }
+            self.task_ui_elements["Spawn all objects"] = btn_builder(**spawn_all_btn)
+            self.task_ui_elements["Spawn all objects"].enabled = False
+
+            clear_all_btn = {
+                "label": "Clear all objects",
+                "type": "button",
+                "text": "Clear all objects",
+                "tooltip": "Remove all spawned objects from bins",
+                "on_clicked_fn": self._on_clear_all_objects_event,
+            }
+            self.task_ui_elements["Clear all objects"] = btn_builder(**clear_all_btn)
+            self.task_ui_elements["Clear all objects"].enabled = False
+
             start_missions_btn = {
                 "label": "Start missions",
                 "type": "button",

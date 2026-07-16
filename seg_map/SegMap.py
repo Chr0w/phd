@@ -22,7 +22,7 @@ import isaac_sim_utils as isu
 import robot_utils
 from setups import get_setup_from_name
 import ros2_utils
-from layout_development import LayoutDevelopmentController, get_mode_config
+from layout_development import LayoutDevelopmentController, BinAssetManager, get_mode_config
 from mission import MissionType, StatusType
 
 import numpy as np
@@ -188,10 +188,12 @@ class SegMap(BaseSample):
         self._mission_loop_logged = False
         self._layout_dev: Optional[LayoutDevelopmentController] = None
         self._layout_dev_started = False
+        self._manual_asset_manager: Optional[BinAssetManager] = None
         self._section_bin_marker_paths: Dict[str, list[str]] = {}
         
         # ROS2 publisher wrapper
         self._storage_utilization_pub = ros2_utils.StorageUtilizationPublisher()
+        self._sim_progress_pub = ros2_utils.SimProgressPublisher()
         self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
         self._teleop_warned_unavailable = False
 
@@ -213,6 +215,35 @@ class SegMap(BaseSample):
             self._layout_dev.total_bins,
         )
         self._storage_utilization_pub.publish_ratio(ratio)
+
+    def _publish_sim_progress(self, sim_time: float):
+        """Publish test progress (total time, percent complete, minutes passed/left)."""
+        if not self._layout_dev:
+            return
+        progress = self._layout_dev.test_progress(sim_time)
+        if progress is None:
+            return
+        self._sim_progress_pub.publish_progress(
+            progress.total_test_time_minutes,
+            progress.percentage_complete,
+            progress.minutes_passed,
+            progress.minutes_left,
+            progress.estimated_real_minutes_to_completion,
+        )
+
+    def _ensure_asset_manager(self) -> BinAssetManager:
+        if self._layout_dev:
+            return self._layout_dev.asset_manager
+        if not self._layout_config:
+            self._load_layout_config()
+        if self._manual_asset_manager is None:
+            self._manual_asset_manager = BinAssetManager(
+                self._stage,
+                self.Setup.user,
+                int(self.Setup.seed_nr),
+            )
+            self._manual_asset_manager.initialize(self._layout_config)
+        return self._manual_asset_manager
 
     def _configure_visual_cube(self, prim_path, translate, scale, color, opacity=None):
         cube = UsdGeom.Cube.Define(self._stage, prim_path)
@@ -391,6 +422,7 @@ class SegMap(BaseSample):
         self._missions_started = False
         self._layout_dev = None
         self._layout_dev_started = False
+        self._manual_asset_manager = None
         isu.create_dome_light()
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
@@ -622,6 +654,7 @@ class SegMap(BaseSample):
         if int(time) != int(self.previous_time_):
             print(f"Simulation time: {time:.2f}s")
             self._publish_storage_utilization()
+            self._publish_sim_progress(time)
 
         if self._layout_dev:
             self._layout_dev.update(time)
@@ -661,6 +694,7 @@ class SegMap(BaseSample):
         self._current_mission_number = 0
         self._all_missions_completed = False
         self._layout_dev_started = False
+        self._manual_asset_manager = None
         self._last_printed_plan_number = None
         print("Reset spawn state for clean restart")
 
@@ -684,3 +718,30 @@ class SegMap(BaseSample):
         self.deregister_sim_step_callback()
         self._missions_started = False
         self._mission_loop_logged = False
+
+    async def _on_spawn_all_objects_event_async(self):
+        if not self._layout_config:
+            self._load_layout_config()
+
+        section_ids = robot_utils.layout_section_ids(self._layout_config)
+        if not section_ids:
+            print("No sections found in layout config")
+            return
+
+        asset_manager = self._ensure_asset_manager()
+        asset_manager.clear_all()
+
+        total_spawned = 0
+        for section_id in section_ids:
+            total_spawned += asset_manager.spawn_section(section_id)
+            await omni.kit.app.get_app().next_update_async()
+
+        print(
+            f"Spawned {total_spawned} object(s) across "
+            f"{len(section_ids)} section(s) (all bins filled)"
+        )
+
+    async def _on_clear_all_objects_event_async(self):
+        asset_manager = self._ensure_asset_manager()
+        asset_manager.clear_all()
+        print("Cleared all spawned objects")

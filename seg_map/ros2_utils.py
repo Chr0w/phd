@@ -5,7 +5,7 @@ import time
 try:
 	import rclpy  # type: ignore
 	from rclpy.node import Node  # type: ignore
-	from std_msgs.msg import Float32  # type: ignore
+	from std_msgs.msg import Float32, Float32MultiArray  # type: ignore
 	from geometry_msgs.msg import Twist  # type: ignore
 	_ROS2_AVAILABLE = True
 except Exception:
@@ -52,6 +52,67 @@ class StorageUtilizationPublisher:
 			rclpy.spin_once(self._node, timeout_sec=0.0)  # type: ignore[name-defined]
 		except Exception:
 			# Swallow exceptions to avoid crashing the sim due to ROS issues
+			pass
+
+	def shutdown(self) -> None:
+		if not self._node:
+			return
+		try:
+			self._node.destroy_node()
+		except Exception:
+			pass
+
+
+class SimProgressPublisher:
+	"""
+	Publishes test progress on /sim_progress as Float32MultiArray:
+	[data[0]=total_test_time_minutes, data[1]=percentage_complete,
+	 data[2]=minutes_passed, data[3]=minutes_left,
+	 data[4]=estimated_real_minutes_to_completion]
+	"""
+	def __init__(self) -> None:
+		self._node: _t.Optional["Node"] = None
+		self._publisher = None
+		self._ok = False
+		if not _ROS2_AVAILABLE:
+			return
+		try:
+			if not rclpy.ok():  # type: ignore[name-defined]
+				rclpy.init()
+			self._node = Node('seg_map_sim_progress_publisher')  # type: ignore[name-defined]
+			self._publisher = self._node.create_publisher(Float32MultiArray, '/sim_progress', 10)  # type: ignore[name-defined]
+			self._ok = True
+		except Exception:
+			self._node = None
+			self._publisher = None
+			self._ok = False
+
+	@property
+	def ok(self) -> bool:
+		return self._ok and self._publisher is not None
+
+	def publish_progress(
+		self,
+		total_test_time_minutes: float,
+		percentage_complete: float,
+		minutes_passed: float,
+		minutes_left: float,
+		estimated_real_minutes_to_completion: float,
+	) -> None:
+		if not self.ok:
+			return
+		try:
+			msg = Float32MultiArray()  # type: ignore[name-defined]
+			msg.data = [
+				float(total_test_time_minutes),
+				float(percentage_complete),
+				float(minutes_passed),
+				float(minutes_left),
+				float(estimated_real_minutes_to_completion),
+			]
+			self._publisher.publish(msg)  # type: ignore[union-attr]
+			rclpy.spin_once(self._node, timeout_sec=0.0)  # type: ignore[name-defined]
+		except Exception:
 			pass
 
 	def shutdown(self) -> None:
