@@ -151,10 +151,13 @@ def waypoint_plans_path() -> str:
     return os.path.join(plans_dir, "waypoint_plans.yaml")
 
 
+BIN_ASSET_SIZES = ("small", "medium", "large")
+
+
 def bin_assets_dir(user: str | None = None, size: str = "large") -> str:
     if user is None:
         user = os.environ.get("USER", "unknown")
-    if size not in {"large", "small"}:
+    if size not in BIN_ASSET_SIZES:
         raise ValueError(f"Unsupported bin asset size: {size}")
     return f"/home/{user}/isaac_sim_files/assets/{size}"
 

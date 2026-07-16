@@ -35,7 +35,9 @@ from isaacsim.examples.base.base_sample_experimental import BaseSample
 import isaacsim.core.experimental.utils.app as app_utils
 from isaacsim.core.simulation_manager import SimulationManager
 
-_BIN_SIZE_M = {"large": 1.45, "small": 0.45}
+_SHOW_BIN_VISUALIZATION = False
+
+_BIN_SIZE_M = {"small": 0.5, "medium": 1.5, "large": 4.0}
 _BIN_HEIGHT_M = 0.02
 _BIN_COLOR = Gf.Vec3f(0.0, 0.8, 0.0)
 _BIN_OPACITY = 0.5
@@ -278,6 +280,9 @@ class SegMap(BaseSample):
         )
 
     def _spawn_layout_bins(self, layout=None):
+        if not _SHOW_BIN_VISUALIZATION:
+            return
+
         layout = layout if layout is not None else self._layout_config
         if not layout:
             return
@@ -723,7 +728,7 @@ class SegMap(BaseSample):
             return
 
         asset_pools = {}
-        for size in ("large", "small"):
+        for size in robot_utils.BIN_ASSET_SIZES:
             assets = robot_utils.list_bin_assets(self.Setup.user, size)
             if not assets:
                 print(f"No {size} assets found in {robot_utils.bin_assets_dir(self.Setup.user, size)}")
