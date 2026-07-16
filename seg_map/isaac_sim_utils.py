@@ -10,10 +10,22 @@ import isaacsim.core.experimental.utils.stage as stage_utils
 
 def _get_prim(stage, prim_path):
     prim_path = str(prim_path)
-    for prim in stage.Traverse():
-        if prim.GetPath().pathString == prim_path:
-            return prim
+    prim = stage.GetPrimAtPath(Sdf.Path(prim_path))
+    if prim and prim.IsValid():
+        return prim
     return None
+
+
+def section_assets_root_path(section_id: str) -> str:
+    return f"/map/assets/{section_id}"
+
+
+def set_section_assets_active(stage, section_id: str, active: bool) -> bool:
+    prim = _get_prim(stage, section_assets_root_path(section_id))
+    if not prim or not prim.IsValid():
+        return False
+    prim.SetActive(bool(active))
+    return True
 
 def set_camera_view(eye=[0,0,0], target=[0,0,0], camera_prim_path="/OmniverseKit_Persp"):
     ViewportManager.set_camera_view(camera=camera_prim_path, eye=eye, target=target)

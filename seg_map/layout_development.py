@@ -20,6 +20,14 @@ class LayoutDevelopmentModeConfig:
 
 
 MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
+        "no_changes": LayoutDevelopmentModeConfig(
+        name="no_changes",
+        runtime_minutes=20,
+        storage_utilization_start=0.0,
+        storage_utilization_target=0.0,
+        event_period_seconds=0,
+        event_random_actions=0,
+    ),
     "fill_up": LayoutDevelopmentModeConfig(
         name="fill_up",
         runtime_minutes=20,
@@ -242,6 +250,13 @@ class BinAssetManager:
 
     def occupied_bin_list(self) -> list[str]:
         return list(self._occupied)
+
+    def active_section_ids(self) -> set[str]:
+        return {
+            self._bin_catalog[bin_key]["section_id"]
+            for bin_key in self._occupied
+            if bin_key in self._bin_catalog
+        }
 
 
 class LayoutDevelopmentController:
