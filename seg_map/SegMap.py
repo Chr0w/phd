@@ -36,6 +36,8 @@ import isaacsim.core.experimental.utils.app as app_utils
 from isaacsim.core.simulation_manager import SimulationManager
 
 _SHOW_BIN_VISUALIZATION = False
+REAL_TIME_FACTOR = 2.0 # Increase to play the sim faster
+SIM_LOOP_HZ = 60.0
 
 _BIN_SIZE_M = {"small": 0.5, "medium": 1.5, "large": 4.0}
 _BIN_HEIGHT_M = 0.02
@@ -672,6 +674,7 @@ class SegMap(BaseSample):
 
         isu.set_camera_view(eye=[-45,-75,55], target=[-12,-12,0])
         await isu.disable_gravity(self._stage)
+        isu.configure_real_time_factor(REAL_TIME_FACTOR, SIM_LOOP_HZ)
 
         self.previous_time_ = SimulationManager.get_simulation_time()
         self.register_sim_step_callback()
@@ -700,6 +703,7 @@ class SegMap(BaseSample):
         app_utils.stop()
         await omni.kit.app.get_app().next_update_async()
         self._ensure_robot_asset()
+        isu.configure_real_time_factor(REAL_TIME_FACTOR, SIM_LOOP_HZ)
         self.register_sim_step_callback()
         app_utils.stop()
         print("Post Reset")

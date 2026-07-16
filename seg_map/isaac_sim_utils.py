@@ -1,12 +1,80 @@
 
 import math
+from fractions import Fraction
 
 import numpy as np
 from omni.physx.scripts import physicsUtils
 from pxr import Usd, UsdGeom, UsdPhysics, Gf, UsdLux, Sdf
 import omni
-from isaacsim.core.rendering_manager import ViewportManager
+import carb.settings
+from isaacsim.core.rendering_manager import ViewportManager, RenderingManager
+from isaacsim.core.simulation_manager import SimulationManager
 import isaacsim.core.experimental.utils.stage as stage_utils
+
+_SETTING_RATE_LIMIT_ENABLED = "/app/runLoops/main/rateLimitEnabled"
+_SETTING_RATE_LIMIT_FREQUENCY = "/app/runLoops/main/rateLimitFrequency"
+_SETTING_FABRIC_DEFAULT_SIM_PERIOD_NUMERATOR = "/app/settings/fabricDefaultSimPeriodNumerator"
+_SETTING_FABRIC_DEFAULT_SIM_PERIOD_DENOMINATOR = "/app/settings/fabricDefaultSimPeriodDenominator"
+
+
+def configure_real_time_factor(rtf: float = 2.0, loop_hz: float = 60.0) -> None:
+    """
+    Target RTF = sim_elapsed / wall_elapsed at the given loop rate.
+
+    At RTF=2 and loop_hz=60, each 60 Hz tick advances 2/60 s of sim time, so one
+    wall second contains two sim seconds.
+    """
+    if rtf <= 0.0:
+        raise ValueError(f"rtf must be positive, got {rtf}")
+    if loop_hz <= 0.0:
+        raise ValueError(f"loop_hz must be positive, got {loop_hz}")
+
+    if abs(rtf - 1.0) < 1e-9:
+        dt = 1.0 / loop_hz
+        SimulationManager.setup_simulation(dt=dt)
+        RenderingManager.set_dt(dt)
+        return
+
+    sim_dt = rtf / loop_hz
+    time_codes_per_second = loop_hz / rtf
+
+    SimulationManager.setup_simulation(dt=sim_dt)
+
+    settings = carb.settings.get_settings()
+    settings.set_bool(_SETTING_RATE_LIMIT_ENABLED, True)
+    settings.set_float(_SETTING_RATE_LIMIT_FREQUENCY, loop_hz)
+    settings.set_bool("/app/player/useFixedTimeStepping", True)
+
+    timeline = omni.timeline.get_timeline_interface()
+    timeline.set_target_framerate(loop_hz)
+    timeline.set_time_codes_per_second(time_codes_per_second)
+    timeline.set_play_every_frame(True)
+
+    stage = stage_utils.get_current_stage(backend="usd")
+    if stage:
+        with Usd.EditContext(stage, stage.GetRootLayer()):
+            stage.SetTimeCodesPerSecond(time_codes_per_second)
+
+    sim_period = Fraction(sim_dt).limit_denominator(1_000_000_000)
+    settings.set_int(_SETTING_FABRIC_DEFAULT_SIM_PERIOD_NUMERATOR, sim_period.numerator)
+    settings.set_int(_SETTING_FABRIC_DEFAULT_SIM_PERIOD_DENOMINATOR, sim_period.denominator)
+
+    try:
+        from omni.kit.loop import _loop as omni_loop
+
+        loop_runner = omni_loop.acquire_loop_interface()
+        if hasattr(loop_runner, "set_manual_step_size"):
+            loop_runner.set_manual_step_size(sim_dt)
+        if hasattr(loop_runner, "set_manual_mode"):
+            loop_runner.set_manual_mode(True)
+    except Exception:
+        pass
+
+    print(
+        f"Configured simulation RTF={rtf:g} at {loop_hz:g} Hz "
+        f"(sim_dt={sim_dt:.6f}s, timeCodesPerSecond={time_codes_per_second:g})"
+    )
+
 
 def _get_prim(stage, prim_path):
     prim_path = str(prim_path)
