@@ -144,15 +144,6 @@ def layout_waypoint_entries(layout: dict) -> list[tuple[str, float, float]]:
 
 NUM_WAYPOINT_PLANS = 300
 DEFAULT_START_WAYPOINT_ID = "waypoint_1"
-LIDAR_MAX_RANGE_M = 30.0
-LIDAR_DEACTIVATE_RANGE_M = 35.0
-SECTION_CULL_UPDATE_INTERVAL_S = 1.0
-
-
-def section_should_be_active(distance_m: float, currently_active: bool) -> bool:
-    if currently_active:
-        return distance_m <= LIDAR_DEACTIVATE_RANGE_M
-    return distance_m <= LIDAR_MAX_RANGE_M
 
 
 def waypoint_plans_path() -> str:
@@ -177,39 +168,6 @@ def list_bin_assets(user: str | None = None, size: str = "large") -> list[str]:
 
 def layout_section_ids(layout: dict) -> list[str]:
     return [str(section.get("id", f"section_{index}")) for index, section in enumerate(layout.get("sections", []), start=1)]
-
-
-def layout_section_bounds(layout: dict) -> dict[str, dict[str, float]]:
-    bounds_by_section: dict[str, dict[str, float]] = {}
-    for section in layout.get("sections", []):
-        section_id = str(section.get("id", ""))
-        if not section_id:
-            continue
-
-        upper_left = section.get("upper_left_m")
-        lower_right = section.get("lower_right_m")
-        if not upper_left or not lower_right:
-            continue
-
-        min_x = min(float(upper_left[0]), float(lower_right[0]))
-        max_x = max(float(upper_left[0]), float(lower_right[0]))
-        min_y = min(float(upper_left[1]), float(lower_right[1]))
-        max_y = max(float(upper_left[1]), float(lower_right[1]))
-        bounds_by_section[section_id] = {
-            "min_x": min_x,
-            "max_x": max_x,
-            "min_y": min_y,
-            "max_y": max_y,
-        }
-
-    return bounds_by_section
-
-
-def distance_to_section_bounds(x: float, y: float, bounds: dict[str, float]) -> float:
-    """Return XY distance from a point to the nearest edge of a section AABB."""
-    dx = max(bounds["min_x"] - x, 0.0, x - bounds["max_x"])
-    dy = max(bounds["min_y"] - y, 0.0, y - bounds["max_y"])
-    return math.hypot(dx, dy)
 
 
 def section_bins(layout: dict, section_id: str, size: str) -> list[dict]:

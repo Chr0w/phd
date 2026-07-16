@@ -251,13 +251,6 @@ class BinAssetManager:
     def occupied_bin_list(self) -> list[str]:
         return list(self._occupied)
 
-    def active_section_ids(self) -> set[str]:
-        return {
-            self._bin_catalog[bin_key]["section_id"]
-            for bin_key in self._occupied
-            if bin_key in self._bin_catalog
-        }
-
 
 class LayoutDevelopmentController:
     def __init__(

@@ -23,7 +23,6 @@ import robot_utils
 from setups import get_setup_from_name
 import ros2_utils
 from layout_development import LayoutDevelopmentController, BinAssetManager, get_mode_config
-from asset_culling import SectionDistanceCuller
 from mission import MissionType, StatusType
 
 import numpy as np
@@ -184,8 +183,6 @@ class SegMap(BaseSample):
         self._layout_dev_started = False
         self._manual_asset_manager: Optional[BinAssetManager] = None
         self._section_bin_marker_paths: Dict[str, list[str]] = {}
-        self._asset_culler: Optional[SectionDistanceCuller] = None
-        self._sim_was_playing = False
         # ROS2 publisher wrapper
         self._storage_utilization_pub = ros2_utils.StorageUtilizationPublisher()
         self._sim_progress_pub = ros2_utils.SimProgressPublisher()
@@ -269,7 +266,6 @@ class SegMap(BaseSample):
 
     def _load_layout_config(self):
         self._layout_config = robot_utils.load_layout_config(self._layout_yaml_path())
-        self._init_asset_culler()
         return self._layout_config
 
     def _init_layout_development(self):
@@ -292,52 +288,11 @@ class SegMap(BaseSample):
             return
         self._layout_dev.start(sim_time)
         self._layout_dev_started = True
-        self._on_asset_layout_changed()
-
-    def _current_asset_manager(self) -> Optional[BinAssetManager]:
-        if self._layout_dev:
-            return self._layout_dev.asset_manager
-        return self._manual_asset_manager
-
-    def _active_asset_section_ids(self) -> set[str]:
-        asset_manager = self._current_asset_manager()
-        if not asset_manager:
-            return set()
-        return asset_manager.active_section_ids()
-
-    def _robot_xy(self) -> tuple[float, float]:
-        position, _ = self._robot_world_pose()
-        return float(position[0]), float(position[1])
-
-    def _init_asset_culler(self):
-        section_bounds = robot_utils.layout_section_bounds(self._layout_config)
-        self._asset_culler = SectionDistanceCuller(
-            section_bounds,
-            self._robot_xy,
-            self._active_asset_section_ids,
-        )
 
     def _init_asset_spawn_state(self):
         self._section_bin_marker_paths = {}
-        self._sim_was_playing = False
-
-    def _update_asset_culling(self, sim_time: float, force: bool = False):
-        if not self._asset_culler or not getattr(self, "_stage", None):
-            return
-        self._asset_culler.update(self._stage, sim_time, force=force)
-
-    def _on_asset_layout_changed(self):
-        if self._asset_culler and self._layout_config:
-            self._asset_culler.refresh_bounds(
-                robot_utils.layout_section_bounds(self._layout_config)
-            )
-        if app_utils.is_playing():
-            self._update_asset_culling(SimulationManager.get_simulation_time(), force=True)
 
     def _stop_simulation(self):
-        if self._asset_culler and getattr(self, "_stage", None):
-            self._asset_culler.on_simulation_stopped(self._stage)
-        self._sim_was_playing = False
         app_utils.stop()
 
     def _spawn_layout_waypoint(self, waypoint_id, x, y):
@@ -668,15 +623,8 @@ class SegMap(BaseSample):
             print(f"Mission {self._current_mission_number} failed!")
 
     def custom_simulation_step(self, step_size):
-        is_playing = app_utils.is_playing()
-        if not is_playing:
-            if self._sim_was_playing and self._asset_culler and getattr(self, "_stage", None):
-                self._asset_culler.on_simulation_stopped(self._stage)
-            self._sim_was_playing = False
+        if not app_utils.is_playing():
             return
-
-        just_started = not self._sim_was_playing
-        self._sim_was_playing = True
 
         current_stage = omni.usd.get_context().get_stage()
         if current_stage is None or getattr(self, "_stage", None) is not current_stage:
@@ -688,8 +636,6 @@ class SegMap(BaseSample):
             self._start_missions_from_timeline(time)
         if not self._ensure_robot_ready():
             return
-
-        self._update_asset_culling(time, force=just_started)
 
         self._current_step_size = step_size or max(0.0, time - self.previous_time_)
         if not self._mission_loop_logged:
@@ -704,10 +650,7 @@ class SegMap(BaseSample):
             self._publish_sim_progress(time)
 
         if self._layout_dev:
-            occupied_before = self._layout_dev.occupied_count
             self._layout_dev.update(time)
-            if self._layout_dev.occupied_count != occupied_before:
-                self._update_asset_culling(time, force=True)
             if self._layout_dev.is_finished(time):
                 self._stop_simulation()
                 return
@@ -790,10 +733,8 @@ class SegMap(BaseSample):
             f"Spawned {total_spawned} object(s) across "
             f"{len(section_ids)} section(s) (all bins filled)"
         )
-        self._on_asset_layout_changed()
 
     async def _on_clear_all_objects_event_async(self):
         asset_manager = self._ensure_asset_manager()
         asset_manager.clear_all()
         print("Cleared all spawned objects")
-        self._on_asset_layout_changed()
