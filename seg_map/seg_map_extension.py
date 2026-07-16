@@ -75,12 +75,6 @@ class SegMapExtensionUI(BaseSampleUITemplate):
             ):
                 self.build_task_controls_ui()
 
-    def _on_add_objects_event(self):
-        print("Spawn objects button pressed")
-        asyncio.ensure_future(self.sample._on_add_objects_event_async())
-        # self.task_ui_elements["Add objects"].enabled = False
-        return
-
     def _on_start_missions_event(self):
         print("Start missions button pressed")
         self.sample.start_missions()
@@ -88,35 +82,19 @@ class SegMapExtensionUI(BaseSampleUITemplate):
         return
 
     def post_reset_button_event(self):
-        self.task_ui_elements["Add objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_load_button_event(self):
-        self.task_ui_elements["Add objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = True
         return
 
     def post_clear_button_event(self):
-        # World needs to be loaded before objects can be added
-        self.task_ui_elements["Add objects"].enabled = True
         self.task_ui_elements["Start missions"].enabled = False
         return
 
     def build_task_controls_ui(self):
         with ui.VStack(spacing=5):
-
-            dict = {
-                "label": "Add objects",
-                "type": "button",
-                "text": "Spawn objects",
-                "tooltip": "Spawn assets for all layout sections",
-                "on_clicked_fn": self._on_add_objects_event,
-            }
-
-            self.task_ui_elements["Add objects"] = btn_builder(**dict)
-            self.task_ui_elements["Add objects"].enabled = False
-
             start_missions_btn = {
                 "label": "Start missions",
                 "type": "button",

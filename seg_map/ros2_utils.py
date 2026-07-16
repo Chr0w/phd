@@ -14,9 +14,9 @@ except Exception:
 def is_available() -> bool:
 	return _ROS2_AVAILABLE
 
-class MapIntegrityPublisher:
+class StorageUtilizationPublisher:
 	"""
-	Small wrapper around a ROS2 publisher for the /map_integrity_ratio topic.
+	Small wrapper around a ROS2 publisher for the /storage_utilization topic.
 	Safe to construct even if ROS2 is unavailable; methods will no-op.
 	"""
 	def __init__(self) -> None:
@@ -28,8 +28,8 @@ class MapIntegrityPublisher:
 		try:
 			if not rclpy.ok():  # type: ignore[name-defined]
 				rclpy.init()
-			self._node = Node('esi_map_integrity_publisher')  # type: ignore[name-defined]
-			self._publisher = self._node.create_publisher(Float32, '/map_integrity_ratio', 10)  # type: ignore[name-defined]
+			self._node = Node('seg_map_storage_utilization_publisher')  # type: ignore[name-defined]
+			self._publisher = self._node.create_publisher(Float32, '/storage_utilization', 10)  # type: ignore[name-defined]
 			self._ok = True
 		except Exception:
 			self._node = None
@@ -137,17 +137,7 @@ class TeleopCommandSubscriber:
 			pass
 
 
-def compute_integrity_ratio(total_boxes: int, untouched_boxes: int) -> float:
-	if total_boxes <= 0:
+def compute_storage_utilization(occupied_bins: int, total_bins: int) -> float:
+	if total_bins <= 0:
 		return 0.0
-
-	#added_and_removed = (total_boxes - untouched_boxes)*2
-	return max(0.0, min(1.0, float(untouched_boxes) / float(total_boxes)))
-
-
-def compute_untouched_boxes(box_name_to_position: dict, moved_box_names: set) -> int:
-	"""Helper to compute untouched box c ount from tracking structures."""
-	try:
-		return len(set(box_name_to_position.keys()) - set(moved_box_names))
-	except Exception:
-		return 0
+	return max(0.0, min(1.0, float(occupied_bins) / float(total_bins)))

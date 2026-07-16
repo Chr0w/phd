@@ -199,6 +199,34 @@ def section_bins(layout: dict, section_id: str, size: str) -> list[dict]:
     return []
 
 
+def all_layout_bins(layout: dict) -> list[dict]:
+    """Return all bins across sections with stable keys for occupancy tracking."""
+    bins: list[dict] = []
+    for section in layout.get("sections", []):
+        section_id = str(section.get("id", "section"))
+        for bin_data in section.get("bins", []):
+            size = str(bin_data.get("size", "small"))
+            upper_left = bin_data.get("upper_left_m")
+            lower_right = bin_data.get("lower_right_m")
+            if not upper_left or not lower_right:
+                continue
+
+            number = int(bin_data.get("number", len(bins) + 1))
+            bins.append(
+                {
+                    "section_id": section_id,
+                    "number": number,
+                    "size": size,
+                    "center_x": (float(upper_left[0]) + float(lower_right[0])) / 2.0,
+                    "center_y": (float(upper_left[1]) + float(lower_right[1])) / 2.0,
+                    "key": f"{section_id}/{size}/bin_{number:03d}",
+                }
+            )
+
+    bins.sort(key=lambda item: (item["section_id"], item["size"], item["number"]))
+    return bins
+
+
 def layout_waypoint_positions(layout: dict) -> dict[str, tuple[float, float]]:
     return {
         waypoint_id: (x, y)

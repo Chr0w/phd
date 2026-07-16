@@ -13,7 +13,6 @@
 # Add the current directory to Python path to find local modules
 import os
 import sys
-import random
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
@@ -23,10 +22,11 @@ import isaac_sim_utils as isu
 import robot_utils
 from setups import get_setup_from_name
 import ros2_utils
+from layout_development import LayoutDevelopmentController, get_mode_config
 from mission import MissionType, StatusType
 
 import numpy as np
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional
 
 from pxr import Usd, UsdPhysics, Gf, UsdGeom, Sdf
 import omni
@@ -77,6 +77,7 @@ class SegMap(BaseSample):
         self._missions_started = True
         self._mission_loop_logged = False
         self.previous_time_ = SimulationManager.get_simulation_time()
+        self._start_layout_development(self.previous_time_)
         self.register_sim_step_callback()
         app_utils.play()
 
@@ -85,6 +86,7 @@ class SegMap(BaseSample):
         self._missions_started = True
         self._mission_loop_logged = False
         self.previous_time_ = time
+        self._start_layout_development(time)
         print("Mission loop armed from timeline play")
 
     def _ensure_robot_ready(self):
@@ -184,17 +186,12 @@ class SegMap(BaseSample):
         self._sim_step_callback_subscription = None
         self._missions_started = False
         self._mission_loop_logged = False
-        
-        # Map editing variables
-        self._box_positions: Dict[str, Tuple[float, float]] = {}
-        self._original_box_positions: Dict[str, Tuple[float, float]] = {}
-        self._original_box_rotations: Dict[str, float] = {}
-        self._moved_boxes: set[str] = set()
-        self._next_spawn_section_index = 0
+        self._layout_dev: Optional[LayoutDevelopmentController] = None
+        self._layout_dev_started = False
         self._section_bin_marker_paths: Dict[str, list[str]] = {}
         
         # ROS2 publisher wrapper
-        self._map_integrity_pub = ros2_utils.MapIntegrityPublisher()
+        self._storage_utilization_pub = ros2_utils.StorageUtilizationPublisher()
         self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
         self._teleop_warned_unavailable = False
 
@@ -207,15 +204,15 @@ class SegMap(BaseSample):
         self.Setup._start_position = start_position
         self.Setup._seed_nr = seed_nr
 
-    def _publish_map_integrity_ratio(self):
-        """Publish the map integrity ratio (untouched boxes / total boxes)"""
-        if not self._box_positions:
+    def _publish_storage_utilization(self):
+        """Publish storage utilization (occupied bins / total bins)."""
+        if not self._layout_dev:
             return
-        total_boxes = len(self._box_positions)
-        untouched_boxes = ros2_utils.compute_untouched_boxes(self._box_positions, self._moved_boxes)
-        integrity_ratio = ros2_utils.compute_integrity_ratio(total_boxes, untouched_boxes)
-        self._map_integrity_pub.publish_ratio(integrity_ratio)
-        # print(f"Map integrity ratio: {integrity_ratio}")
+        ratio = ros2_utils.compute_storage_utilization(
+            self._layout_dev.occupied_count,
+            self._layout_dev.total_bins,
+        )
+        self._storage_utilization_pub.publish_ratio(ratio)
 
     def _configure_visual_cube(self, prim_path, translate, scale, color, opacity=None):
         cube = UsdGeom.Cube.Define(self._stage, prim_path)
@@ -247,6 +244,27 @@ class SegMap(BaseSample):
     def _load_layout_config(self):
         self._layout_config = robot_utils.load_layout_config(self._layout_yaml_path())
         return self._layout_config
+
+    def _init_layout_development(self):
+        mode_name = self.Setup.layout_development_mode
+        if not mode_name:
+            self._layout_dev = None
+            return
+        config = get_mode_config(mode_name)
+        self._layout_dev = LayoutDevelopmentController(
+            self._stage,
+            self._layout_config,
+            config,
+            self.Setup.user,
+            int(self.Setup.seed_nr),
+        )
+        self._layout_dev_started = False
+
+    def _start_layout_development(self, sim_time: float):
+        if not self._layout_dev or self._layout_dev_started:
+            return
+        self._layout_dev.start(sim_time)
+        self._layout_dev_started = True
 
     def _init_asset_spawn_state(self):
         self._section_bin_marker_paths = {}
@@ -325,6 +343,7 @@ class SegMap(BaseSample):
         """
         self._load_layout_config()
         self._spawn_layout_waypoints()
+        self._init_layout_development()
 
         seed = int(self.Setup.seed_nr)
         self._waypoint_plans = robot_utils.generate_waypoint_plans(
@@ -370,11 +389,8 @@ class SegMap(BaseSample):
     def setup_scene(self):
         self.deregister_sim_step_callback()
         self._missions_started = False
-        self._next_spawn_section_index = 0
-        self._box_positions = {}
-        self._original_box_positions = {}
-        self._original_box_rotations = {}
-        self._moved_boxes = set()
+        self._layout_dev = None
+        self._layout_dev_started = False
         isu.create_dome_light()
         self._stage = omni.usd.get_context().get_stage()
         isu.add_reference_to_stage(usd_path=self.Setup.map_usd_path, prim_path=f"/map")
@@ -605,8 +621,13 @@ class SegMap(BaseSample):
         # Debug: Show simulation time occasionally
         if int(time) != int(self.previous_time_):
             print(f"Simulation time: {time:.2f}s")
-            # Publish map integrity ratio every second
-            self._publish_map_integrity_ratio()
+            self._publish_storage_utilization()
+
+        if self._layout_dev:
+            self._layout_dev.update(time)
+            if self._layout_dev.is_finished(time):
+                self._stop_simulation()
+                return
 
         self._enforce_planar_orientation()
 
@@ -639,12 +660,8 @@ class SegMap(BaseSample):
         self._misisons = []
         self._current_mission_number = 0
         self._all_missions_completed = False
-        self._moved_boxes = set()
-        self._box_positions = {}
-        self._original_box_positions = {}
-        self._original_box_rotations = {}
+        self._layout_dev_started = False
         self._last_printed_plan_number = None
-        self._next_spawn_section_index = 0
         print("Reset spawn state for clean restart")
 
     async def setup_post_reset(self):
@@ -667,91 +684,3 @@ class SegMap(BaseSample):
         self.deregister_sim_step_callback()
         self._missions_started = False
         self._mission_loop_logged = False
-
-    def _spawn_section_assets(
-        self,
-        section_id: str,
-        asset_pools: dict[str, list[str]],
-        section_index: int,
-    ) -> int:
-        rng = random.Random(self.Setup.seed_nr + section_index)
-        spawned = 0
-
-        UsdGeom.Xform.Define(self._stage, f"/map/assets/{section_id}")
-
-        for size, assets in asset_pools.items():
-            bins = robot_utils.section_bins(self._layout_config, section_id, size)
-            if not bins:
-                continue
-
-            instances = []
-            for bin_data in bins:
-                asset_path = rng.choice(assets)
-                rotation = rng.uniform(0.0, 360.0)
-                bin_number = bin_data["number"]
-                logical_name = f"/map/assets/{section_id}/{size}/bin_{bin_number:03d}"
-
-                instances.append(
-                    {
-                        "asset_path": asset_path,
-                        "x": bin_data["center_x"],
-                        "y": bin_data["center_y"],
-                        "z": 0.0,
-                        "yaw_degrees": rotation,
-                    }
-                )
-
-                position = (bin_data["center_x"], bin_data["center_y"])
-                self._box_positions[logical_name] = position
-                self._original_box_positions[logical_name] = position
-                self._original_box_rotations[logical_name] = rotation
-
-            instancer_path = f"/map/assets/{section_id}/{size}/instancer"
-            spawned += isu.spawn_point_instancer(self._stage, instancer_path, instances)
-
-        return spawned
-
-    async def _on_add_objects_event_async(self):
-        if not self._layout_config:
-            self._load_layout_config()
-
-        section_ids = robot_utils.layout_section_ids(self._layout_config)
-        if not section_ids:
-            print("No sections found in layout config")
-            return
-
-        if self._next_spawn_section_index >= len(section_ids):
-            print(
-                f"Warning: all {len(section_ids)} section(s) already spawned; "
-                "ignoring spawn request"
-            )
-            return
-
-        asset_pools = {}
-        for size in robot_utils.BIN_ASSET_SIZES:
-            assets = robot_utils.list_bin_assets(self.Setup.user, size)
-            if not assets:
-                print(f"No {size} assets found in {robot_utils.bin_assets_dir(self.Setup.user, size)}")
-            else:
-                asset_pools[size] = assets
-
-        if not asset_pools:
-            return
-
-        total_spawned = 0
-        start_index = self._next_spawn_section_index
-        while self._next_spawn_section_index < len(section_ids):
-            section_id = section_ids[self._next_spawn_section_index]
-            total_spawned += self._spawn_section_assets(
-                section_id,
-                asset_pools,
-                self._next_spawn_section_index,
-            )
-            self._next_spawn_section_index += 1
-            await omni.kit.app.get_app().next_update_async()
-
-        spawned_sections = self._next_spawn_section_index - start_index
-        print(
-            f"Spawned {total_spawned} instanced asset(s) across "
-            f"{spawned_sections} section(s) ({self._next_spawn_section_index}/{len(section_ids)} total)"
-        )

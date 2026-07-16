@@ -2,7 +2,7 @@ import os
 import random
 
 class Setup():
-    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None) -> None:
+    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None, layout_development_mode: str = None) -> None:
         self._name = name
         self._user = user
         self._mission_file = mission_file_path
@@ -10,6 +10,7 @@ class Setup():
         self._seed_nr = seed_nr
         self._robot_prim_name = robot_prim_name
         self._start_position = start_position
+        self._layout_development_mode = layout_development_mode
     @property
     def name(self):
         return self._name
@@ -38,6 +39,10 @@ class Setup():
     def start_position(self):
         return self._start_position
 
+    @property
+    def layout_development_mode(self):
+        return self._layout_development_mode
+
     def set_seed_nr(self, seed_nr: int):
         self._seed_nr = seed_nr
 
@@ -62,6 +67,7 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name="mir_bot_3",
+            layout_development_mode="fill_up",
         ),
     ]
     
