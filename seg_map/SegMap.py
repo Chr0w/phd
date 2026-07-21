@@ -36,8 +36,14 @@ import isaacsim.core.experimental.utils.app as app_utils
 from isaacsim.core.simulation_manager import SimulationManager
 
 _SHOW_BIN_VISUALIZATION = False
-REAL_TIME_FACTOR = 2.0 # Increase to play the sim faster
+REAL_TIME_FACTOR = 5.0 # Increase to play the sim faster
 SIM_LOOP_HZ = 60.0
+_ROBOT_TOP_SPEED_MPS = 2.0
+_LINEAR_ACCEL_MPS2 = 3.0
+_ANGULAR_ACCEL_RADPS2 = 1.2
+_MAX_ANGULAR_VELOCITY_RADPS = 2.5
+_YAW_ALIGN_GAIN = 2.0
+_MAX_SIM_STEP_JITTER = 2.0
 
 _BIN_SIZE_M = {"small": 0.5, "medium": 1.5, "large": 4.0}
 _BIN_HEIGHT_M = 0.02
@@ -147,10 +153,16 @@ class SegMap(BaseSample):
         prim = self._stage.GetPrimAtPath(Sdf.Path(str(prim_path)))
         return prim if prim and prim.IsValid() else Usd.Prim()
 
+    def _motion_step_size(self) -> float:
+        """Sim dt for velocity integration, scaled for the configured RTF."""
+        step = max(0.0, float(getattr(self, "_current_step_size", 1.0 / SIM_LOOP_HZ)))
+        max_step = REAL_TIME_FACTOR / SIM_LOOP_HZ * _MAX_SIM_STEP_JITTER
+        return min(step, max_step)
+
     def _set_robot_velocity(self, linear=None, angular=None):
         position, orientation = self._robot_world_pose()
         yaw_radians = robot_utils.quaternion_to_yaw_radians(orientation)
-        step_size = max(0.0, min(float(getattr(self, "_current_step_size", 1.0 / 60.0)), 0.1))
+        step_size = self._motion_step_size()
         if angular is not None:
             yaw_radians += float(np.asarray(angular)[2]) * step_size
         if linear is not None:
@@ -459,6 +471,8 @@ class SegMap(BaseSample):
         current_yaw_radians = robot_utils.quaternion_to_yaw_radians(robot_current_orientation)
 
         self._enforce_planar_orientation()
+
+        step_size = self._motion_step_size()
         
         # Calculate the angular difference
         yaw_error = target_yaw_radians - current_yaw_radians
@@ -469,18 +483,22 @@ class SegMap(BaseSample):
         while yaw_error < -np.pi:
             yaw_error += 2 * np.pi
         
-        # Calculate angular velocity based on error (proportional control)
-        spin_direction = -1.0 if yaw_error < 0 else 1.0
+        # Calculate angular velocity based on heading error (rad/s).
+        desired_angular_velocity = np.clip(
+            _YAW_ALIGN_GAIN * yaw_error,
+            -_MAX_ANGULAR_VELOCITY_RADPS,
+            _MAX_ANGULAR_VELOCITY_RADPS,
+        )
 
-        if abs(yaw_error - self._previous_angular_velocity_) > 0.01:
-            angular_velocity_z = yaw_error
+        angular_delta = desired_angular_velocity - self._previous_angular_velocity_
+        max_angular_delta = _ANGULAR_ACCEL_RADPS2 * step_size
+        if angular_delta > max_angular_delta:
+            angular_velocity_z = self._previous_angular_velocity_ + max_angular_delta
+        elif angular_delta < -max_angular_delta:
+            angular_velocity_z = self._previous_angular_velocity_ - max_angular_delta
         else:
-            angular_velocity_z = self._previous_angular_velocity_ + spin_direction * 0.01
+            angular_velocity_z = desired_angular_velocity
 
-        # Limit angular velocity to prevent overshooting
-        max_angular_velocity = 1.5  # rad/s
-        angular_velocity_z = np.clip(angular_velocity_z, -max_angular_velocity, max_angular_velocity)
-        
         # Set angular velocity for smooth turning
         angular_velocity = np.array([0.0, 0.0, angular_velocity_z])
         self._set_robot_velocity(angular=angular_velocity)
@@ -489,22 +507,22 @@ class SegMap(BaseSample):
         # print(f"Current yaw: {current_yaw_radians}, Target yaw: {target_yaw_radians}, Yaw error: {yaw_error}")
         # Calculate forward direction vector based on current orientation
         forward_direction = np.array([np.cos(current_yaw_radians), np.sin(current_yaw_radians)])
-        
-        # Set movement speed (adjust as needed)
-        top_speed = 2.0
-        speed = 1.0  # meters per second
 
-        # Convert waypoint to numpy array for distance calculation
+        top_speed = _ROBOT_TOP_SPEED_MPS
+        # Slow forward motion while turning so the path radius stays tight.
+        target_speed = top_speed * max(0.0, np.cos(yaw_error))
         distance = np.linalg.norm(robot_current_position - np.array([waypoint.x, waypoint.y, robot_current_position[2]]))
-
         if distance < 0.5:
-            speed = max(speed * distance/2.5, 0.5)
+            target_speed = max(target_speed * distance / 2.5, 0.5)
 
-        if speed - self._previous_speed > 0.05: 
-            speed = self._previous_speed + 0.05
-        
-        if speed > top_speed:
-            speed = top_speed
+        max_speed_delta = _LINEAR_ACCEL_MPS2 * step_size
+        speed_delta = target_speed - self._previous_speed
+        if speed_delta > max_speed_delta:
+            speed = self._previous_speed + max_speed_delta
+        elif speed_delta < -max_speed_delta:
+            speed = self._previous_speed - max_speed_delta
+        else:
+            speed = target_speed
         
         # Calculate linear velocity in world frame
         linear_velocity_world = np.array([forward_direction[0] * speed, 

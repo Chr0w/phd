@@ -59,14 +59,15 @@ def get_all_setups(user: str = None):
     if user is None:
         user = os.environ.get("USER", "unknown")
 
+    mir_bot = "mir_bot_4"
     setups = [
         Setup(
             name="setup_1",
             user=user,
-            mission_file_path=f"/home/{user}/isaac_sim_files/robots/mir_bot_3/mir_bot_3.usd",
+            mission_file_path=f"/home/{user}/isaac_sim_files/robots/{mir_bot}/{mir_bot}.usd",
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
-            robot_prim_name="mir_bot_3",
+            robot_prim_name=mir_bot,
             layout_development_mode="no_changes",
         ),
     ]
