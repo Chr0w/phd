@@ -68,7 +68,7 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="fill_up",
+            layout_development_mode="overnight_changes",
         ),
     ]
     

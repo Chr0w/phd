@@ -40,7 +40,7 @@ from isaacsim.core.simulation_manager import SimulationManager
 _SHOW_BIN_VISUALIZATION = False
 REAL_TIME_FACTOR = 1.0 # Increase to play the sim faster
 SIM_LOOP_HZ = 60.0
-_ROBOT_TOP_SPEED_MPS = 2.0
+_ROBOT_TOP_SPEED_MPS = 1.0
 _LINEAR_ACCEL_MPS2 = 3.0
 _ANGULAR_ACCEL_RADPS2 = 1.2
 _MAX_ANGULAR_VELOCITY_RADPS = 2.5

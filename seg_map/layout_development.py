@@ -39,7 +39,7 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     ),
     "overnight_changes": LayoutDevelopmentModeConfig(
         name="overnight_changes",
-        runtime_minutes=20,
+        runtime_minutes=5,
         storage_utilization_start=0.5,
         storage_utilization_target=0.5,
         event_period_seconds=0,
