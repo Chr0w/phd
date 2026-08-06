@@ -28,6 +28,8 @@ from mission import MissionType, StatusType
 import numpy as np
 from typing import Dict, Optional
 
+import asyncio
+
 from pxr import Usd, UsdPhysics, Gf, UsdGeom, Sdf
 import omni
 import omni.kit.app
@@ -36,7 +38,7 @@ import isaacsim.core.experimental.utils.app as app_utils
 from isaacsim.core.simulation_manager import SimulationManager
 
 _SHOW_BIN_VISUALIZATION = False
-REAL_TIME_FACTOR = 5.0 # Increase to play the sim faster
+REAL_TIME_FACTOR = 1.0 # Increase to play the sim faster
 SIM_LOOP_HZ = 60.0
 _ROBOT_TOP_SPEED_MPS = 2.0
 _LINEAR_ACCEL_MPS2 = 3.0
@@ -81,6 +83,9 @@ class SegMap(BaseSample):
             self._missions_started = False
 
     def start_missions(self):
+        if self._layout_dev and not self._layout_instancers_prewarmed:
+            print("Layout instancers are still pre-warming; wait for Start missions to enable")
+            return
         self._ensure_robot_asset()
         self._missions_started = True
         self._mission_loop_logged = False
@@ -195,6 +200,10 @@ class SegMap(BaseSample):
         self._mission_loop_logged = False
         self._layout_dev: Optional[LayoutDevelopmentController] = None
         self._layout_dev_started = False
+        self._layout_instancers_prewarmed = False
+        self._layout_prewarm_active = False
+        self._layout_prewarm_listener = None
+        self._layout_usd_worker_active = False
         self._manual_asset_manager: Optional[BinAssetManager] = None
         self._section_bin_marker_paths: Dict[str, list[str]] = {}
         # ROS2 publisher wrapper
@@ -297,11 +306,68 @@ class SegMap(BaseSample):
         )
         self._layout_dev_started = False
 
+    def set_layout_prewarm_listener(self, callback) -> None:
+        self._layout_prewarm_listener = callback
+        if self._layout_instancers_prewarmed and callback is not None:
+            callback()
+
+    def _notify_layout_prewarm_complete(self) -> None:
+        listener = getattr(self, "_layout_prewarm_listener", None)
+        if listener is not None:
+            listener()
+
     def _start_layout_development(self, sim_time: float):
         if not self._layout_dev or self._layout_dev_started:
             return
         self._layout_dev.start(sim_time)
         self._layout_dev_started = True
+        self._schedule_layout_usd_worker()
+
+    async def _prewarm_layout_instancers_async(self):
+        if not self._layout_dev:
+            return
+        manager = self._layout_dev.asset_manager
+        groups = sorted(manager._group_keys.keys())
+        for section_id, size in groups:
+            manager._ensure_group_ready(section_id, size)
+            await omni.kit.app.get_app().next_update_async()
+        if groups:
+            print(f"Pre-warmed {len(groups)} instancer group(s)")
+
+    async def _begin_layout_prewarm_async(self):
+        if self._layout_prewarm_active or self._layout_instancers_prewarmed:
+            return
+        if not self._layout_dev:
+            self._layout_instancers_prewarmed = True
+            self._notify_layout_prewarm_complete()
+            return
+
+        self._layout_prewarm_active = True
+        print("Pre-warming layout instancers (Start missions will enable when ready)...")
+        try:
+            await self._prewarm_layout_instancers_async()
+            self._layout_instancers_prewarmed = True
+            print("Layout instancers ready — missions can be started")
+        finally:
+            self._layout_prewarm_active = False
+            self._notify_layout_prewarm_complete()
+
+    def _schedule_layout_usd_worker(self):
+        if self._layout_usd_worker_active:
+            return
+        if not self._layout_dev or not self._layout_dev.asset_manager.has_pending_usd_work():
+            return
+        self._layout_usd_worker_active = True
+        asyncio.ensure_future(self._layout_usd_worker_async())
+
+    async def _layout_usd_worker_async(self):
+        try:
+            while self._layout_dev and self._layout_dev.asset_manager.flush_one_update():
+                await omni.kit.app.get_app().next_update_async()
+        finally:
+            self._layout_usd_worker_active = False
+            if self._layout_dev and self._layout_dev.asset_manager.has_pending_usd_work():
+                self._schedule_layout_usd_worker()
 
     def _init_asset_spawn_state(self):
         self._section_bin_marker_paths = {}
@@ -428,6 +494,9 @@ class SegMap(BaseSample):
         self._missions_started = False
         self._layout_dev = None
         self._layout_dev_started = False
+        self._layout_instancers_prewarmed = False
+        self._layout_prewarm_active = False
+        self._layout_usd_worker_active = False
         self._manual_asset_manager = None
         isu.create_dome_light()
         self._stage = omni.usd.get_context().get_stage()
@@ -671,6 +740,7 @@ class SegMap(BaseSample):
 
         if self._layout_dev:
             self._layout_dev.update(time)
+            self._schedule_layout_usd_worker()
             if self._layout_dev.is_finished(time):
                 self._stop_simulation()
                 return
@@ -697,6 +767,7 @@ class SegMap(BaseSample):
         self.previous_time_ = SimulationManager.get_simulation_time()
         self.register_sim_step_callback()
         app_utils.stop()
+        asyncio.ensure_future(self._begin_layout_prewarm_async())
 
     async def setup_pre_reset(self):
         print("Pre Reset")
@@ -708,6 +779,9 @@ class SegMap(BaseSample):
         self._current_mission_number = 0
         self._all_missions_completed = False
         self._layout_dev_started = False
+        self._layout_instancers_prewarmed = False
+        self._layout_prewarm_active = False
+        self._layout_usd_worker_active = False
         self._manual_asset_manager = None
         self._last_printed_plan_number = None
         print("Reset spawn state for clean restart")
@@ -725,6 +799,7 @@ class SegMap(BaseSample):
         self.register_sim_step_callback()
         app_utils.stop()
         print("Post Reset")
+        asyncio.ensure_future(self._begin_layout_prewarm_async())
 
     async def setup_post_clear(self):
         self.physics_cleanup()
@@ -749,6 +824,7 @@ class SegMap(BaseSample):
         total_spawned = 0
         for section_id in section_ids:
             total_spawned += asset_manager.spawn_section(section_id)
+            self._schedule_layout_usd_worker()
             await omni.kit.app.get_app().next_update_async()
 
         print(
@@ -759,4 +835,5 @@ class SegMap(BaseSample):
     async def _on_clear_all_objects_event_async(self):
         asset_manager = self._ensure_asset_manager()
         asset_manager.clear_all()
+        self._schedule_layout_usd_worker()
         print("Cleared all spawned objects")

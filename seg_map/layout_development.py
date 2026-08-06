@@ -1,5 +1,6 @@
 import random
 import time
+from collections import deque
 from dataclasses import dataclass
 from typing import Optional
 
@@ -30,10 +31,10 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     ),
     "fill_up": LayoutDevelopmentModeConfig(
         name="fill_up",
-        runtime_minutes=20,
+        runtime_minutes=10,
         storage_utilization_start=0.0,
-        storage_utilization_target=0.7,
-        event_period_seconds=20,
+        storage_utilization_target=0.8,
+        event_period_seconds=10,
         event_random_actions=10,
     ),
     "overnight_changes": LayoutDevelopmentModeConfig(
@@ -92,6 +93,11 @@ class BinAssetManager:
         self._occupied: set[str] = set()
         self._instances: dict[str, dict] = {}
         self._group_keys: dict[tuple[str, str], list[str]] = {}
+        self._group_bin_index: dict[tuple[str, str], dict[str, int]] = {}
+        self._group_proto_map: dict[tuple[str, str], dict[str, int]] = {}
+        self._slot_templates: dict[str, dict] = {}
+        self._groups_ready: set[tuple[str, str]] = set()
+        self._pending_updates: deque[tuple[str, str, str, str]] = deque()
 
     def initialize(self, layout: dict) -> None:
         self._asset_pools = {}
@@ -111,6 +117,14 @@ class BinAssetManager:
         for group_keys in self._group_keys.values():
             group_keys.sort()
 
+        self._group_bin_index = {
+            group: {bin_key: index for index, bin_key in enumerate(keys)}
+            for group, keys in self._group_keys.items()
+        }
+        self._slot_templates = {}
+        self._groups_ready = set()
+        self._pending_updates.clear()
+
     @property
     def total_bins(self) -> int:
         return len(self._bin_catalog)
@@ -129,49 +143,134 @@ class BinAssetManager:
         salt += sum(ord(c) for c in bin_data["size"]) * 100
         return random.Random(self._seed_nr + salt)
 
-    def _instancer_path(self, section_id: str, size: str) -> str:
-        return f"/map/assets/{section_id}/{size}/instancer"
+    def _slot_template_for_bin(self, bin_key: str) -> dict:
+        if bin_key in self._slot_templates:
+            return self._slot_templates[bin_key]
 
-    def _rebuild_group(self, section_id: str, size: str) -> None:
+        bin_data = self._bin_catalog[bin_key]
+        assets = self._asset_pools.get(bin_data["size"], [])
+        template = {
+            "asset_path": "",
+            "x": bin_data["center_x"],
+            "y": bin_data["center_y"],
+            "z": 0.0,
+            "yaw_degrees": 0.0,
+        }
+        if assets:
+            rng = self._rng_for_bin(bin_key)
+            template["asset_path"] = rng.choice(assets)
+            template["yaw_degrees"] = rng.uniform(0.0, 360.0)
+
+        self._slot_templates[bin_key] = template
+        return template
+
+    def _queue_visibility_update(self, op: str, bin_key: str) -> None:
+        bin_data = self._bin_catalog[bin_key]
+        self._pending_updates = deque(
+            item for item in self._pending_updates if item[3] != bin_key
+        )
+        self._pending_updates.append((op, bin_data["section_id"], bin_data["size"], bin_key))
+
+    def _ensure_group_ready(self, section_id: str, size: str) -> None:
         group = (section_id, size)
-        instancer_path = self._instancer_path(section_id, size)
-        prim = self._stage.GetPrimAtPath(Sdf.Path(instancer_path))
-        if prim and prim.IsValid():
-            self._stage.RemovePrim(Sdf.Path(instancer_path))
+        if group in self._groups_ready:
+            return
+        self._create_group_shell(section_id, size)
+        self._groups_ready.add(group)
 
-        instances = []
-        for bin_key in self._group_keys.get(group, []):
-            if bin_key not in self._occupied:
-                continue
-            instance = self._instances[bin_key]
-            instances.append(
-                {
-                    "asset_path": instance["asset_path"],
-                    "x": instance["x"],
-                    "y": instance["y"],
-                    "z": instance.get("z", 0.0),
-                    "yaw_degrees": instance["yaw_degrees"],
-                }
-            )
+    def _create_group_shell(self, section_id: str, size: str) -> None:
+        group = (section_id, size)
+        bin_keys = self._group_keys.get(group, [])
+        if not bin_keys:
+            return
 
-        if not instances:
+        pool_assets = self._asset_pools.get(size, [])
+        if not pool_assets:
+            return
+
+        instances = [self._slot_template_for_bin(bin_key) for bin_key in bin_keys]
+        if not any(instance["asset_path"] for instance in instances):
             return
 
         UsdGeom.Xform.Define(self._stage, f"/map/assets/{section_id}")
-        isu.spawn_point_instancer(self._stage, instancer_path, instances)
+        instancer_path = self._instancer_path(section_id, size)
+        self._group_proto_map[group] = isu.create_point_instancer_shell(
+            self._stage,
+            instancer_path,
+            instances,
+            pool_assets,
+        )
 
-    def _rebuild_all_groups(self) -> None:
-        for section_id, size in self._group_keys:
-            self._rebuild_group(section_id, size)
+    def has_pending_usd_work(self) -> bool:
+        return bool(self._pending_updates)
+
+    def flush_one_update(self) -> bool:
+        if not self._pending_updates:
+            return False
+
+        op, section_id, size, bin_key = self._pending_updates.popleft()
+        self._ensure_group_ready(section_id, size)
+        group = (section_id, size)
+        slot_index = self._group_bin_index.get(group, {}).get(bin_key)
+        if slot_index is None:
+            return True
+
+        instancer_path = self._instancer_path(section_id, size)
+        if op == "show":
+            instance = self._instances[bin_key]
+            proto_index = self._group_proto_map[group][instance["asset_path"]]
+            isu.show_point_instancer_slot(
+                self._stage, instancer_path, slot_index, proto_index
+            )
+        else:
+            isu.hide_point_instancer_slot(self._stage, instancer_path, slot_index)
+        return True
+
+    def _sync_group_visibility(self, section_id: str, size: str) -> None:
+        group = (section_id, size)
+        bin_keys = self._group_keys.get(group, [])
+        if not bin_keys:
+            return
+
+        self._ensure_group_ready(section_id, size)
+        proto_map = self._group_proto_map.get(group, {})
+        proto_indices = []
+        invisible = []
+        for index, bin_key in enumerate(bin_keys):
+            if bin_key in self._occupied:
+                asset_path = self._instances[bin_key]["asset_path"]
+                proto_indices.append(proto_map[asset_path])
+            else:
+                proto_indices.append(isu.EMPTY_PROTO_INDEX)
+                invisible.append(index)
+
+        instancer_path = self._instancer_path(section_id, size)
+        isu.set_point_instancer_proto_indices(self._stage, instancer_path, proto_indices)
+        isu.set_point_instancer_invisible_ids(self._stage, instancer_path, invisible)
+
+    def apply_all_visibility(self) -> None:
+        groups_to_sync: set[tuple[str, str]] = set()
+        for bin_key in self._occupied:
+            bin_data = self._bin_catalog[bin_key]
+            groups_to_sync.add((bin_data["section_id"], bin_data["size"]))
+
+        for section_id, size in groups_to_sync:
+            self._sync_group_visibility(section_id, size)
+
+    def _instancer_path(self, section_id: str, size: str) -> str:
+        return f"/map/assets/{section_id}/{size}/instancer"
+
+    def flush_pending_updates(self) -> None:
+        while self._pending_updates:
+            self.flush_one_update()
 
     def clear_all(self) -> None:
+        occupied_before = list(self._occupied)
         self._occupied = set()
         self._instances = {}
-        for section_id, size in self._group_keys:
-            instancer_path = self._instancer_path(section_id, size)
-            prim = self._stage.GetPrimAtPath(Sdf.Path(instancer_path))
-            if prim and prim.IsValid():
-                self._stage.RemovePrim(Sdf.Path(instancer_path))
+        self._pending_updates.clear()
+        for bin_key in occupied_before:
+            self._queue_visibility_update("hide", bin_key)
 
     def spawn_all(self) -> int:
         self.clear_all()
@@ -185,19 +284,18 @@ class BinAssetManager:
         }
         for bin_key in section_keys:
             if bin_key in self._occupied:
-                self.remove_bin(bin_key)
+                self.remove_bin(bin_key, flush=False)
         spawned = 0
         for bin_key in sorted(section_keys):
             if self._add_bin_internal(bin_key):
                 spawned += 1
-        for size in robot_utils.BIN_ASSET_SIZES:
-            if any(self._bin_catalog[key]["size"] == size for key in section_keys):
-                self._rebuild_group(section_id, size)
+                self._queue_visibility_update("show", bin_key)
         return spawned
 
     def set_occupied_bins(self, bin_keys: set[str]) -> int:
         self._occupied = set()
         self._instances = {}
+        self._pending_updates.clear()
         spawned = 0
 
         for bin_key in sorted(bin_keys):
@@ -205,44 +303,43 @@ class BinAssetManager:
                 continue
             if self._add_bin_internal(bin_key):
                 spawned += 1
+                self._queue_visibility_update("show", bin_key)
 
-        self._rebuild_all_groups()
         return spawned
 
     def _add_bin_internal(self, bin_key: str) -> bool:
         if bin_key in self._occupied or bin_key not in self._bin_catalog:
             return False
 
-        bin_data = self._bin_catalog[bin_key]
-        assets = self._asset_pools.get(bin_data["size"], [])
-        if not assets:
+        template = self._slot_template_for_bin(bin_key)
+        if not template["asset_path"]:
             return False
 
-        rng = self._rng_for_bin(bin_key)
-        self._instances[bin_key] = {
-            "asset_path": rng.choice(assets),
-            "x": bin_data["center_x"],
-            "y": bin_data["center_y"],
-            "z": 0.0,
-            "yaw_degrees": rng.uniform(0.0, 360.0),
-        }
+        self._instances[bin_key] = dict(template)
         self._occupied.add(bin_key)
         return True
 
-    def add_bin(self, bin_key: str) -> bool:
+    def add_bin(self, bin_key: str, *, flush: bool = False) -> bool:
         if not self._add_bin_internal(bin_key):
             return False
         bin_data = self._bin_catalog[bin_key]
-        self._rebuild_group(bin_data["section_id"], bin_data["size"])
+        if flush:
+            self._ensure_group_ready(bin_data["section_id"], bin_data["size"])
+            self._sync_group_visibility(bin_data["section_id"], bin_data["size"])
+        else:
+            self._queue_visibility_update("show", bin_key)
         return True
 
-    def remove_bin(self, bin_key: str) -> bool:
+    def remove_bin(self, bin_key: str, *, flush: bool = False) -> bool:
         if bin_key not in self._occupied:
             return False
         bin_data = self._bin_catalog[bin_key]
         self._occupied.discard(bin_key)
         self._instances.pop(bin_key, None)
-        self._rebuild_group(bin_data["section_id"], bin_data["size"])
+        if flush:
+            self._sync_group_visibility(bin_data["section_id"], bin_data["size"])
+        else:
+            self._queue_visibility_update("hide", bin_key)
         return True
 
     def empty_bins(self) -> list[str]:
@@ -361,6 +458,7 @@ class LayoutDevelopmentController:
     def update(self, sim_time: float) -> None:
         if not self._started or self._finished:
             return
+
         if self.is_finished(sim_time):
             self._finished = True
             print(

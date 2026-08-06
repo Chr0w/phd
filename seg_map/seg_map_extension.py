@@ -9,8 +9,12 @@
 
 import os
 
+import carb.eventdispatcher
 import omni.ext
+import omni.kit.app
+import omni.timeline
 import omni.ui as ui
+import omni.usd
 import asyncio
 from isaacsim.examples.browser import get_instance as get_browser_instance
 from isaacsim.examples.base.base_sample_extension_experimental import BaseSampleUITemplate
@@ -35,6 +39,7 @@ class SegMapExtension(omni.ext.IExt):
 
 
         self.ui_handle = SegMapExtensionUI(**ui_kwargs)
+        self.ui_handle.set_sample(self.sample)
 
         # register the example with examples browser
         get_browser_instance().register_example(
@@ -57,6 +62,85 @@ class SegMapExtension(omni.ext.IExt):
 class SegMapExtensionUI(BaseSampleUITemplate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._sample_ref = kwargs.get("sample")
+
+    def set_sample(self, sample) -> None:
+        self._sample_ref = sample
+        if sample is not None:
+            sample.set_layout_prewarm_listener(self._on_layout_prewarm_complete)
+
+    @property
+    def sample(self):
+        if self._sample_ref is not None:
+            return self._sample_ref
+        return super().sample
+
+    def _set_start_missions_enabled(self, enabled: bool) -> None:
+        start_missions = self.task_ui_elements.get("Start missions")
+        if start_missions is not None:
+            start_missions.enabled = enabled
+
+    def _on_layout_prewarm_complete(self) -> None:
+        if not getattr(self._sample_ref, "_layout_instancers_prewarmed", False):
+            return
+        self._set_start_missions_enabled(True)
+
+    def _revoke_event_subscriptions(self) -> None:
+        if self._stage_event_subscription is not None:
+            self._stage_event_subscription.reset()
+            self._stage_event_subscription = None
+        if self._timeline_event_subscription is not None:
+            self._timeline_event_subscription.reset()
+            self._timeline_event_subscription = None
+
+    def on_shutdown(self) -> None:
+        self._revoke_event_subscriptions()
+        super().on_shutdown()
+
+    def _safe_on_stage_event(self, event) -> None:
+        if self._sample is None:
+            return
+        self._sample._physics_cleanup()
+        load_world = self._buttons.get("Load World") if self._buttons else None
+        if load_world is None:
+            return
+        self._enable_all_buttons(False)
+        load_world.enabled = True
+
+    def _safe_reset_on_stop_event(self, event) -> None:
+        load_world = self._buttons.get("Load World") if self._buttons else None
+        reset = self._buttons.get("Reset") if self._buttons else None
+        if load_world is None or reset is None:
+            return
+        load_world.enabled = False
+        reset.enabled = True
+        self.post_clear_button_event()
+
+    def _on_load_world(self) -> None:
+        async def _on_load_world_async() -> None:
+            self._revoke_event_subscriptions()
+            await self._sample.load_world_async()
+            await omni.kit.app.get_app().next_update_async()
+
+            usd_context = omni.usd.get_context()
+            self._stage_event_subscription = carb.eventdispatcher.get_eventdispatcher().observe_event(
+                event_name=usd_context.stage_event_name(omni.usd.StageEventType.CLOSED),
+                on_event=self._safe_on_stage_event,
+                observer_name="seg_map_extension.on_stage_closed",
+            )
+            self._timeline_event_subscription = carb.eventdispatcher.get_eventdispatcher().observe_event(
+                event_name=omni.timeline.GLOBAL_EVENT_STOP,
+                on_event=self._safe_reset_on_stop_event,
+                observer_name="seg_map_extension._reset_on_stop_event",
+            )
+
+            self._enable_all_buttons(True)
+            load_world = self._buttons.get("Load World")
+            if load_world is not None:
+                load_world.enabled = False
+            self.post_load_button_event()
+
+        asyncio.ensure_future(_on_load_world_async())
 
     def build_extra_frames(self):
         extra_stacks = self.get_extra_frames_handle()
@@ -94,19 +178,21 @@ class SegMapExtensionUI(BaseSampleUITemplate):
     def post_reset_button_event(self):
         self.task_ui_elements["Spawn all objects"].enabled = True
         self.task_ui_elements["Clear all objects"].enabled = True
-        self.task_ui_elements["Start missions"].enabled = True
+        self._set_start_missions_enabled(False)
         return
 
     def post_load_button_event(self):
         self.task_ui_elements["Spawn all objects"].enabled = True
         self.task_ui_elements["Clear all objects"].enabled = True
-        self.task_ui_elements["Start missions"].enabled = True
+        self._set_start_missions_enabled(False)
         return
 
     def post_clear_button_event(self):
         self.task_ui_elements["Spawn all objects"].enabled = True
         self.task_ui_elements["Clear all objects"].enabled = True
-        self.task_ui_elements["Start missions"].enabled = False
+        self._set_start_missions_enabled(
+            getattr(self._sample_ref, "_layout_instancers_prewarmed", False)
+        )
         return
 
     def build_task_controls_ui(self):

@@ -29,16 +29,11 @@ def configure_real_time_factor(rtf: float = 2.0, loop_hz: float = 60.0) -> None:
     if loop_hz <= 0.0:
         raise ValueError(f"loop_hz must be positive, got {loop_hz}")
 
-    if abs(rtf - 1.0) < 1e-9:
-        dt = 1.0 / loop_hz
-        SimulationManager.setup_simulation(dt=dt)
-        RenderingManager.set_dt(dt)
-        return
-
     sim_dt = rtf / loop_hz
     time_codes_per_second = loop_hz / rtf
 
     SimulationManager.setup_simulation(dt=sim_dt)
+    RenderingManager.set_dt(1.0 / loop_hz)
 
     settings = carb.settings.get_settings()
     settings.set_bool(_SETTING_RATE_LIMIT_ENABLED, True)
@@ -134,6 +129,31 @@ def _yaw_degrees_to_quat_h(yaw_degrees):
     return Gf.Quath(math.cos(half_yaw), 0.0, 0.0, math.sin(half_yaw))
 
 
+EMPTY_PROTO_INDEX = 0
+
+
+def _ensure_empty_prototype(stage, prototypes_root):
+    """Collision-free prototype used for hidden instancer slots."""
+    empty_path = f"{prototypes_root}/proto_{EMPTY_PROTO_INDEX:02d}"
+    prim = _get_prim(stage, empty_path)
+    if prim and prim.IsValid():
+        return empty_path
+    UsdGeom.Xform.Define(stage, empty_path)
+    return empty_path
+
+
+def _set_slot_proto_index(instancer, slot_index, proto_index):
+    proto_indices_attr = instancer.GetProtoIndicesAttr()
+    proto_indices = list(proto_indices_attr.Get() if proto_indices_attr else [])
+    if slot_index >= len(proto_indices):
+        return
+    proto_indices[slot_index] = proto_index
+    if proto_indices_attr:
+        proto_indices_attr.Set(proto_indices)
+    else:
+        instancer.CreateProtoIndicesAttr(proto_indices)
+
+
 def spawn_point_instancer(stage, instancer_path, instances):
     """
     Spawn many assets efficiently via UsdGeomPointInstancer.
@@ -146,25 +166,57 @@ def spawn_point_instancer(stage, instancer_path, instances):
     """
     if not instances:
         return 0
+    sync_point_instancer(stage, instancer_path, instances, {})
+    return len(instances)
 
-    unique_assets = list(dict.fromkeys(instance["asset_path"] for instance in instances))
+
+def sync_point_instancer(stage, instancer_path, instances, asset_to_proto_index=None):
+    """
+    Create or update a PointInstancer, reusing existing prototype prims when possible.
+
+    Returns an updated asset_path -> prototype_index map for the instancer.
+    """
+    if not instances:
+        prim = _get_prim(stage, instancer_path)
+        if prim and prim.IsValid():
+            stage.RemovePrim(Sdf.Path(instancer_path))
+        return {}
+
+    asset_to_proto_index = dict(asset_to_proto_index or {})
     prototypes_root = f"{instancer_path}/Prototypes"
-    proto_paths = []
+    instancer_prim = _get_prim(stage, instancer_path)
+    created = instancer_prim is None or not instancer_prim.IsValid()
 
-    for index, asset_path in enumerate(unique_assets):
-        proto_path = f"{prototypes_root}/proto_{index:02d}"
+    if created:
+        instancer = UsdGeom.PointInstancer.Define(stage, instancer_path)
+    else:
+        instancer = UsdGeom.PointInstancer(instancer_prim)
+
+    next_index = (max(asset_to_proto_index.values()) + 1) if asset_to_proto_index else 0
+    prototypes_changed = created
+
+    for asset_path in dict.fromkeys(instance["asset_path"] for instance in instances):
+        if asset_path in asset_to_proto_index:
+            continue
+        proto_path = f"{prototypes_root}/proto_{next_index:02d}"
         add_reference_to_stage(asset_path, proto_path)
         _strip_rigid_bodies_recursive(stage, proto_path)
-        proto_paths.append(proto_path)
+        asset_to_proto_index[asset_path] = next_index
+        next_index += 1
+        prototypes_changed = True
 
-    instancer = UsdGeom.PointInstancer.Define(stage, instancer_path)
-    instancer.CreatePrototypesRel().SetTargets([Sdf.Path(path) for path in proto_paths])
+    if prototypes_changed:
+        max_index = max(asset_to_proto_index.values())
+        proto_paths = [f"{prototypes_root}/proto_{i:02d}" for i in range(max_index + 1)]
+        prototypes_rel = instancer.GetPrototypesRel()
+        if prototypes_rel:
+            prototypes_rel.SetTargets([Sdf.Path(path) for path in proto_paths])
+        else:
+            instancer.CreatePrototypesRel().SetTargets([Sdf.Path(path) for path in proto_paths])
 
-    asset_to_index = {asset_path: index for index, asset_path in enumerate(unique_assets)}
     positions = []
     orientations = []
     proto_indices = []
-
     for instance in instances:
         positions.append(
             Gf.Vec3f(
@@ -174,13 +226,139 @@ def spawn_point_instancer(stage, instancer_path, instances):
             )
         )
         orientations.append(_yaw_degrees_to_quat_h(instance["yaw_degrees"]))
-        proto_indices.append(asset_to_index[instance["asset_path"]])
+        proto_indices.append(asset_to_proto_index[instance["asset_path"]])
 
+    positions_attr = instancer.GetPositionsAttr()
+    if positions_attr:
+        positions_attr.Set(positions)
+    else:
+        instancer.CreatePositionsAttr(positions)
+
+    orientations_attr = instancer.GetOrientationsAttr()
+    if orientations_attr:
+        orientations_attr.Set(orientations)
+    else:
+        instancer.CreateOrientationsAttr(orientations)
+
+    proto_indices_attr = instancer.GetProtoIndicesAttr()
+    if proto_indices_attr:
+        proto_indices_attr.Set(proto_indices)
+    else:
+        instancer.CreateProtoIndicesAttr(proto_indices)
+
+    return asset_to_proto_index
+
+
+def _get_point_instancer(stage, instancer_path):
+    instancer_prim = _get_prim(stage, instancer_path)
+    if not instancer_prim or not instancer_prim.IsValid():
+        return None
+    return UsdGeom.PointInstancer(instancer_prim)
+
+
+def _ensure_pool_prototypes(stage, instancer_path, pool_assets, asset_to_proto_index):
+    prototypes_root = f"{instancer_path}/Prototypes"
+    _ensure_empty_prototype(stage, prototypes_root)
+    proto_map = dict(asset_to_proto_index or {})
+    next_index = (max(proto_map.values()) + 1) if proto_map else 1
+    prototypes_changed = not proto_map
+
+    for asset_path in pool_assets:
+        if asset_path in proto_map:
+            continue
+        proto_path = f"{prototypes_root}/proto_{next_index:02d}"
+        add_reference_to_stage(asset_path, proto_path)
+        _strip_rigid_bodies_recursive(stage, proto_path)
+        proto_map[asset_path] = next_index
+        next_index += 1
+        prototypes_changed = True
+
+    return proto_map, prototypes_changed
+
+
+def create_point_instancer_shell(stage, instancer_path, instances, pool_assets):
+    """
+    Create a fixed-slot PointInstancer with every slot pre-positioned and hidden.
+
+    Hidden slots use an empty collision-free prototype so lidar ignores them.
+    """
+    instancer = UsdGeom.PointInstancer.Define(stage, instancer_path)
+    proto_map, prototypes_changed = _ensure_pool_prototypes(
+        stage, instancer_path, pool_assets, {}
+    )
+    prototypes_root = f"{instancer_path}/Prototypes"
+    max_index = max(proto_map.values()) if proto_map else EMPTY_PROTO_INDEX
+    if prototypes_changed and max_index >= EMPTY_PROTO_INDEX:
+        proto_paths = [f"{prototypes_root}/proto_{i:02d}" for i in range(max_index + 1)]
+        instancer.CreatePrototypesRel().SetTargets([Sdf.Path(path) for path in proto_paths])
+
+    positions = []
+    orientations = []
+    for instance in instances:
+        positions.append(
+            Gf.Vec3f(
+                float(instance["x"]),
+                float(instance["y"]),
+                float(instance.get("z", 0.0)),
+            )
+        )
+        orientations.append(_yaw_degrees_to_quat_h(instance["yaw_degrees"]))
+
+    slot_count = len(instances)
     instancer.CreatePositionsAttr(positions)
     instancer.CreateOrientationsAttr(orientations)
-    instancer.CreateProtoIndicesAttr(proto_indices)
+    instancer.CreateProtoIndicesAttr([EMPTY_PROTO_INDEX] * slot_count)
+    instancer.CreateInvisibleIdsAttr(list(range(slot_count)))
+    return proto_map
 
-    return len(instances)
+
+def set_point_instancer_proto_indices(stage, instancer_path, proto_indices):
+    instancer = _get_point_instancer(stage, instancer_path)
+    if not instancer:
+        return
+    proto_indices_attr = instancer.GetProtoIndicesAttr()
+    if proto_indices_attr:
+        proto_indices_attr.Set(proto_indices)
+    else:
+        instancer.CreateProtoIndicesAttr(proto_indices)
+
+
+def set_point_instancer_invisible_ids(stage, instancer_path, invisible_ids):
+    instancer = _get_point_instancer(stage, instancer_path)
+    if not instancer:
+        return
+    invisible_attr = instancer.GetInvisibleIdsAttr()
+    if invisible_attr:
+        invisible_attr.Set(invisible_ids)
+    else:
+        instancer.CreateInvisibleIdsAttr(invisible_ids)
+
+
+def hide_point_instancer_slot(stage, instancer_path, slot_index):
+    instancer = _get_point_instancer(stage, instancer_path)
+    if not instancer:
+        return
+    _set_slot_proto_index(instancer, slot_index, EMPTY_PROTO_INDEX)
+    invisible_attr = instancer.GetInvisibleIdsAttr()
+    invisible = list(invisible_attr.Get() if invisible_attr else [])
+    if slot_index in invisible:
+        return
+    invisible.append(slot_index)
+    invisible.sort()
+    set_point_instancer_invisible_ids(stage, instancer_path, invisible)
+
+
+def show_point_instancer_slot(stage, instancer_path, slot_index, asset_proto_index):
+    instancer = _get_point_instancer(stage, instancer_path)
+    if not instancer:
+        return
+    _set_slot_proto_index(instancer, slot_index, asset_proto_index)
+    invisible_attr = instancer.GetInvisibleIdsAttr()
+    invisible = list(invisible_attr.Get() if invisible_attr else [])
+    if slot_index not in invisible:
+        return
+    invisible.remove(slot_index)
+    set_point_instancer_invisible_ids(stage, instancer_path, invisible)
 
 
 def create_dome_light(stage_path="/World/dome_light"):
