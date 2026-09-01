@@ -30,11 +30,11 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     ),
     "fill_up": LayoutDevelopmentModeConfig(
         name="fill_up",
-        runtime_minutes=10,
+        runtime_minutes=15,
         storage_utilization_start=0.0,
         storage_utilization_target=0.8,
         event_period_seconds=10,
-        event_random_actions=10,
+        event_random_actions=5,
     ),
     "overnight_changes": LayoutDevelopmentModeConfig(
         name="overnight_changes",

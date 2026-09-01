@@ -234,6 +234,40 @@ def layout_waypoint_positions(layout: dict) -> dict[str, tuple[float, float]]:
     }
 
 
+def _rect_bounds_m(upper_left_m, lower_right_m) -> tuple[float, float, float, float]:
+    x_min = min(float(upper_left_m[0]), float(lower_right_m[0]))
+    x_max = max(float(upper_left_m[0]), float(lower_right_m[0]))
+    y_min = min(float(upper_left_m[1]), float(lower_right_m[1]))
+    y_max = max(float(upper_left_m[1]), float(lower_right_m[1]))
+    return x_min, x_max, y_min, y_max
+
+
+def _point_in_rect_m(x: float, y: float, upper_left_m, lower_right_m) -> bool:
+    x_min, x_max, y_min, y_max = _rect_bounds_m(upper_left_m, lower_right_m)
+    return x_min <= x <= x_max and y_min <= y <= y_max
+
+
+def layout_anchor_waypoint_ids(layout: dict) -> set[str]:
+    """Return waypoint IDs whose position lies inside any layout anchor_points rectangle."""
+    anchor_rects = []
+    for anchor in layout.get("anchor_points", []):
+        upper_left = anchor.get("upper_left_m")
+        lower_right = anchor.get("lower_right_m")
+        if upper_left and lower_right and len(upper_left) >= 2 and len(lower_right) >= 2:
+            anchor_rects.append((upper_left, lower_right))
+
+    if not anchor_rects:
+        return set()
+
+    anchor_ids: set[str] = set()
+    for waypoint_id, x, y in layout_waypoint_entries(layout):
+        for upper_left, lower_right in anchor_rects:
+            if _point_in_rect_m(x, y, upper_left, lower_right):
+                anchor_ids.add(waypoint_id)
+                break
+    return anchor_ids
+
+
 def build_waypoint_graph(layout: dict) -> dict[str, list[tuple[str, float]]]:
     positions = layout_waypoint_positions(layout)
     graph: dict[str, list[tuple[str, float]]] = {waypoint_id: [] for waypoint_id in positions}
@@ -298,6 +332,7 @@ def generate_waypoint_plans(
     num_plans: int = NUM_WAYPOINT_PLANS,
     seed: int = 1,
     start_waypoint_id: str = DEFAULT_START_WAYPOINT_ID,
+    target_waypoint_ids: set[str] | None = None,
 ) -> list[dict]:
     graph = build_waypoint_graph(layout)
     positions = layout_waypoint_positions(layout)
@@ -313,7 +348,17 @@ def generate_waypoint_plans(
     plans: list[dict] = []
 
     for plan_number in range(1, num_plans + 1):
-        candidates = [waypoint_id for waypoint_id in waypoint_ids if waypoint_id != current_waypoint_id]
+        candidates = [
+            waypoint_id
+            for waypoint_id in waypoint_ids
+            if waypoint_id != current_waypoint_id
+        ]
+        if target_waypoint_ids is not None:
+            candidates = [
+                waypoint_id
+                for waypoint_id in candidates
+                if waypoint_id in target_waypoint_ids
+            ]
         rng.shuffle(candidates)
 
         target_waypoint_id = None
@@ -326,6 +371,10 @@ def generate_waypoint_plans(
                 break
 
         if target_waypoint_id is None or path is None:
+            if target_waypoint_ids is not None:
+                raise RuntimeError(
+                    f"No reachable anchor waypoint from {current_waypoint_id} for plan {plan_number}"
+                )
             raise RuntimeError(f"No reachable waypoint from {current_waypoint_id} for plan {plan_number}")
 
         plans.append(

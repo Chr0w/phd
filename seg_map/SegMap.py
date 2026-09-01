@@ -449,11 +449,23 @@ class SegMap(BaseSample):
         self._init_layout_development()
 
         seed = int(self.Setup.seed_nr)
+        target_waypoint_ids = None
+        if self.Setup.only_plan_anchor_waypoints:
+            target_waypoint_ids = robot_utils.layout_anchor_waypoint_ids(self._layout_config)
+            if not target_waypoint_ids:
+                raise ValueError(
+                    "only_plan_anchor_waypoints is enabled but no waypoints lie inside layout anchor_points"
+                )
+            print(
+                f"Plan targets restricted to {len(target_waypoint_ids)} anchor waypoint(s)"
+            )
+
         self._waypoint_plans = robot_utils.generate_waypoint_plans(
             self._layout_config,
             num_plans=robot_utils.NUM_WAYPOINT_PLANS,
             seed=seed,
             start_waypoint_id=robot_utils.DEFAULT_START_WAYPOINT_ID,
+            target_waypoint_ids=target_waypoint_ids,
         )
         self._plan_count = len(self._waypoint_plans)
 

@@ -3,257 +3,162 @@ seed: 1
 plans:
 - plan: 1
   start: waypoint_1
-  target: waypoint_35
+  target: waypoint_30
   path:
   - waypoint_1
   - waypoint_7
   - waypoint_6
   - waypoint_14
   - waypoint_20
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
 - plan: 2
-  start: waypoint_35
-  target: waypoint_25
-  path:
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-  - waypoint_25
-- plan: 3
-  start: waypoint_25
-  target: waypoint_15
-  path:
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-- plan: 4
-  start: waypoint_15
-  target: waypoint_31
-  path:
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-- plan: 5
-  start: waypoint_31
-  target: waypoint_33
-  path:
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-- plan: 6
-  start: waypoint_33
+  start: waypoint_30
   target: waypoint_6
   path:
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+- plan: 3
+  start: waypoint_6
+  target: waypoint_3
+  path:
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 4
+  start: waypoint_3
+  target: waypoint_11
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 5
+  start: waypoint_11
+  target: waypoint_1
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_1
+- plan: 6
+  start: waypoint_1
+  target: waypoint_6
+  path:
+  - waypoint_1
+  - waypoint_7
   - waypoint_6
 - plan: 7
   start: waypoint_6
-  target: waypoint_35
+  target: waypoint_4
   path:
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 8
+  start: waypoint_4
+  target: waypoint_7
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+- plan: 9
+  start: waypoint_7
+  target: waypoint_43
+  path:
+  - waypoint_7
   - waypoint_6
   - waypoint_14
   - waypoint_20
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-- plan: 8
-  start: waypoint_35
-  target: waypoint_32
-  path:
-  - waypoint_35
-  - waypoint_34
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
   - waypoint_33
   - waypoint_32
-- plan: 9
-  start: waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 10
+  start: waypoint_43
+  target: waypoint_42
+  path:
+  - waypoint_43
+  - waypoint_42
+- plan: 11
+  start: waypoint_42
   target: waypoint_40
   path:
+  - waypoint_42
   - waypoint_32
   - waypoint_33
   - waypoint_34
   - waypoint_35
   - waypoint_36
   - waypoint_40
-- plan: 10
-  start: waypoint_40
-  target: waypoint_10
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-- plan: 11
-  start: waypoint_10
-  target: waypoint_4
-  path:
-  - waypoint_10
-  - waypoint_11
-  - waypoint_4
 - plan: 12
-  start: waypoint_4
-  target: waypoint_28
+  start: waypoint_40
+  target: waypoint_7
   path:
-  - waypoint_4
-  - waypoint_11
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 13
-  start: waypoint_28
-  target: waypoint_43
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
+  - waypoint_40
+  - waypoint_36
   - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 14
-  start: waypoint_43
-  target: waypoint_3
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_3
-- plan: 15
-  start: waypoint_3
-  target: waypoint_21
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_6
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
   - waypoint_14
-  - waypoint_20
-  - waypoint_21
-- plan: 16
-  start: waypoint_21
-  target: waypoint_13
-  path:
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_13
-- plan: 17
-  start: waypoint_13
-  target: waypoint_5
-  path:
-  - waypoint_13
-  - waypoint_12
-  - waypoint_5
-- plan: 18
-  start: waypoint_5
-  target: waypoint_43
-  path:
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 19
-  start: waypoint_43
-  target: waypoint_19
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-- plan: 20
-  start: waypoint_19
+  - waypoint_6
+  - waypoint_7
+- plan: 13
+  start: waypoint_7
   target: waypoint_22
   path:
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_12
   - waypoint_23
   - waypoint_22
-- plan: 21
+- plan: 14
   start: waypoint_22
-  target: waypoint_29
+  target: waypoint_43
   path:
   - waypoint_22
   - waypoint_23
   - waypoint_24
   - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-- plan: 22
-  start: waypoint_29
-  target: waypoint_15
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-- plan: 23
-  start: waypoint_15
-  target: waypoint_10
-  path:
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-- plan: 24
-  start: waypoint_10
-  target: waypoint_26
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
   - waypoint_26
-- plan: 25
-  start: waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 15
+  start: waypoint_43
   target: waypoint_7
   path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
   - waypoint_26
   - waypoint_25
   - waypoint_19
@@ -261,150 +166,326 @@ plans:
   - waypoint_14
   - waypoint_6
   - waypoint_7
-- plan: 26
+- plan: 16
   start: waypoint_7
-  target: waypoint_28
-  path:
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 27
-  start: waypoint_28
-  target: waypoint_3
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-  - waypoint_5
-  - waypoint_3
-- plan: 28
-  start: waypoint_3
-  target: waypoint_7
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_6
-  - waypoint_7
-- plan: 29
-  start: waypoint_7
-  target: waypoint_4
-  path:
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_11
-  - waypoint_4
-- plan: 30
-  start: waypoint_4
-  target: waypoint_7
-  path:
-  - waypoint_4
-  - waypoint_11
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-- plan: 31
-  start: waypoint_7
-  target: waypoint_15
-  path:
-  - waypoint_7
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-- plan: 32
-  start: waypoint_15
   target: waypoint_6
   path:
+  - waypoint_7
+  - waypoint_6
+- plan: 17
+  start: waypoint_6
+  target: waypoint_38
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 18
+  start: waypoint_38
+  target: waypoint_11
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 19
+  start: waypoint_11
+  target: waypoint_22
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
   - waypoint_15
   - waypoint_21
   - waypoint_20
-  - waypoint_14
-  - waypoint_6
-- plan: 33
-  start: waypoint_6
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 20
+  start: waypoint_22
   target: waypoint_7
   path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
   - waypoint_6
   - waypoint_7
-- plan: 34
+- plan: 21
   start: waypoint_7
-  target: waypoint_21
+  target: waypoint_39
   path:
   - waypoint_7
   - waypoint_6
   - waypoint_14
   - waypoint_20
   - waypoint_21
-- plan: 35
-  start: waypoint_21
-  target: waypoint_33
-  path:
-  - waypoint_21
   - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 22
+  start: waypoint_39
+  target: waypoint_43
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
   - waypoint_35
   - waypoint_34
   - waypoint_33
-- plan: 36
-  start: waypoint_33
-  target: waypoint_23
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 23
+  start: waypoint_43
+  target: waypoint_40
   path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
   - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-- plan: 37
-  start: waypoint_23
-  target: waypoint_38
+  - waypoint_34
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 24
+  start: waypoint_40
+  target: waypoint_30
   path:
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
   - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 25
+  start: waypoint_30
+  target: waypoint_3
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 26
+  start: waypoint_3
+  target: waypoint_6
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+- plan: 27
+  start: waypoint_6
+  target: waypoint_40
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
   - waypoint_27
   - waypoint_35
   - waypoint_36
   - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 38
-  start: waypoint_38
-  target: waypoint_36
+- plan: 28
+  start: waypoint_40
+  target: waypoint_37
   path:
-  - waypoint_38
-  - waypoint_39
   - waypoint_40
-  - waypoint_36
-- plan: 39
-  start: waypoint_36
-  target: waypoint_8
-  path:
   - waypoint_36
   - waypoint_35
   - waypoint_27
   - waypoint_21
   - waypoint_15
   - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 29
+  start: waypoint_37
+  target: waypoint_2
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
   - waypoint_10
   - waypoint_9
   - waypoint_8
-- plan: 40
-  start: waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 30
+  start: waypoint_2
+  target: waypoint_11
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 31
+  start: waypoint_11
   target: waypoint_37
   path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 32
+  start: waypoint_37
+  target: waypoint_2
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 33
+  start: waypoint_2
+  target: waypoint_43
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 34
+  start: waypoint_43
+  target: waypoint_37
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 35
+  start: waypoint_37
+  target: waypoint_30
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 36
+  start: waypoint_30
+  target: waypoint_42
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 37
+  start: waypoint_42
+  target: waypoint_37
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 38
+  start: waypoint_37
+  target: waypoint_18
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_18
+- plan: 39
+  start: waypoint_18
+  target: waypoint_6
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+- plan: 40
+  start: waypoint_6
+  target: waypoint_37
+  path:
+  - waypoint_6
+  - waypoint_7
   - waypoint_8
   - waypoint_9
   - waypoint_10
@@ -415,1024 +496,70 @@ plans:
   - waypoint_37
 - plan: 41
   start: waypoint_37
-  target: waypoint_42
+  target: waypoint_11
   path:
   - waypoint_37
   - waypoint_29
   - waypoint_28
   - waypoint_17
   - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
+  - waypoint_10
+  - waypoint_11
 - plan: 42
-  start: waypoint_42
-  target: waypoint_6
+  start: waypoint_11
+  target: waypoint_22
   path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-- plan: 43
-  start: waypoint_6
-  target: waypoint_25
-  path:
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-- plan: 44
-  start: waypoint_25
-  target: waypoint_29
-  path:
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-- plan: 45
-  start: waypoint_29
-  target: waypoint_21
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-- plan: 46
-  start: waypoint_21
-  target: waypoint_39
-  path:
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 47
-  start: waypoint_39
-  target: waypoint_4
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-  - waypoint_11
-  - waypoint_4
-- plan: 48
-  start: waypoint_4
-  target: waypoint_8
-  path:
-  - waypoint_4
   - waypoint_11
   - waypoint_10
-  - waypoint_9
-  - waypoint_8
-- plan: 49
-  start: waypoint_8
-  target: waypoint_29
-  path:
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-- plan: 50
-  start: waypoint_29
-  target: waypoint_4
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_11
-  - waypoint_4
-- plan: 51
-  start: waypoint_4
-  target: waypoint_8
-  path:
-  - waypoint_4
-  - waypoint_11
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-- plan: 52
-  start: waypoint_8
-  target: waypoint_37
-  path:
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 53
-  start: waypoint_37
-  target: waypoint_25
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
   - waypoint_16
   - waypoint_15
   - waypoint_21
   - waypoint_20
   - waypoint_19
-  - waypoint_25
-- plan: 54
-  start: waypoint_25
-  target: waypoint_5
-  path:
   - waypoint_25
   - waypoint_24
   - waypoint_23
-  - waypoint_12
-  - waypoint_5
-- plan: 55
-  start: waypoint_5
-  target: waypoint_14
+  - waypoint_22
+- plan: 43
+  start: waypoint_22
+  target: waypoint_30
   path:
-  - waypoint_5
-  - waypoint_6
-  - waypoint_14
-- plan: 56
-  start: waypoint_14
-  target: waypoint_43
-  path:
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 57
-  start: waypoint_43
-  target: waypoint_34
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_34
-- plan: 58
-  start: waypoint_34
-  target: waypoint_35
-  path:
-  - waypoint_34
-  - waypoint_35
-- plan: 59
-  start: waypoint_35
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 44
+  start: waypoint_30
   target: waypoint_40
   path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
   - waypoint_35
   - waypoint_36
   - waypoint_40
-- plan: 60
+- plan: 45
   start: waypoint_40
-  target: waypoint_17
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-- plan: 61
-  start: waypoint_17
-  target: waypoint_11
-  path:
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_11
-- plan: 62
-  start: waypoint_11
-  target: waypoint_9
-  path:
-  - waypoint_11
-  - waypoint_10
-  - waypoint_9
-- plan: 63
-  start: waypoint_9
-  target: waypoint_43
-  path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 64
-  start: waypoint_43
-  target: waypoint_20
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-- plan: 65
-  start: waypoint_20
-  target: waypoint_9
-  path:
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-- plan: 66
-  start: waypoint_9
-  target: waypoint_18
-  path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_18
-- plan: 67
-  start: waypoint_18
-  target: waypoint_26
-  path:
-  - waypoint_18
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_26
-- plan: 68
-  start: waypoint_26
-  target: waypoint_31
-  path:
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-- plan: 69
-  start: waypoint_31
-  target: waypoint_27
-  path:
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-- plan: 70
-  start: waypoint_27
-  target: waypoint_35
-  path:
-  - waypoint_27
-  - waypoint_35
-- plan: 71
-  start: waypoint_35
-  target: waypoint_22
-  path:
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_22
-- plan: 72
-  start: waypoint_22
-  target: waypoint_12
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_12
-- plan: 73
-  start: waypoint_12
-  target: waypoint_6
-  path:
-  - waypoint_12
-  - waypoint_5
-  - waypoint_6
-- plan: 74
-  start: waypoint_6
-  target: waypoint_30
-  path:
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-  - waypoint_30
-- plan: 75
-  start: waypoint_30
-  target: waypoint_42
-  path:
-  - waypoint_30
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-- plan: 76
-  start: waypoint_42
-  target: waypoint_28
-  path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 77
-  start: waypoint_28
-  target: waypoint_6
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-- plan: 78
-  start: waypoint_6
-  target: waypoint_36
-  path:
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 79
-  start: waypoint_36
-  target: waypoint_37
-  path:
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 80
-  start: waypoint_37
-  target: waypoint_6
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-- plan: 81
-  start: waypoint_6
-  target: waypoint_10
-  path:
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-- plan: 82
-  start: waypoint_10
-  target: waypoint_28
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 83
-  start: waypoint_28
-  target: waypoint_24
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-- plan: 84
-  start: waypoint_24
-  target: waypoint_25
-  path:
-  - waypoint_24
-  - waypoint_25
-- plan: 85
-  start: waypoint_25
-  target: waypoint_24
-  path:
-  - waypoint_25
-  - waypoint_24
-- plan: 86
-  start: waypoint_24
-  target: waypoint_35
-  path:
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-- plan: 87
-  start: waypoint_35
-  target: waypoint_23
-  path:
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-- plan: 88
-  start: waypoint_23
-  target: waypoint_8
-  path:
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-- plan: 89
-  start: waypoint_8
-  target: waypoint_27
-  path:
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-- plan: 90
-  start: waypoint_27
-  target: waypoint_37
-  path:
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 91
-  start: waypoint_37
-  target: waypoint_32
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-- plan: 92
-  start: waypoint_32
-  target: waypoint_30
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-  - waypoint_30
-- plan: 93
-  start: waypoint_30
-  target: waypoint_43
-  path:
-  - waypoint_30
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 94
-  start: waypoint_43
-  target: waypoint_13
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_13
-- plan: 95
-  start: waypoint_13
-  target: waypoint_33
-  path:
-  - waypoint_13
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-- plan: 96
-  start: waypoint_33
-  target: waypoint_10
-  path:
-  - waypoint_33
-  - waypoint_26
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-- plan: 97
-  start: waypoint_10
-  target: waypoint_21
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-- plan: 98
-  start: waypoint_21
-  target: waypoint_28
-  path:
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 99
-  start: waypoint_28
-  target: waypoint_42
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-- plan: 100
-  start: waypoint_42
-  target: waypoint_19
-  path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-- plan: 101
-  start: waypoint_19
-  target: waypoint_8
-  path:
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-- plan: 102
-  start: waypoint_8
-  target: waypoint_29
-  path:
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-- plan: 103
-  start: waypoint_29
-  target: waypoint_22
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_22
-- plan: 104
-  start: waypoint_22
-  target: waypoint_6
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_6
-- plan: 105
-  start: waypoint_6
-  target: waypoint_11
-  path:
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_11
-- plan: 106
-  start: waypoint_11
-  target: waypoint_31
-  path:
-  - waypoint_11
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-- plan: 107
-  start: waypoint_31
-  target: waypoint_1
-  path:
-  - waypoint_31
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 108
-  start: waypoint_1
-  target: waypoint_19
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-- plan: 109
-  start: waypoint_19
-  target: waypoint_43
-  path:
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 110
-  start: waypoint_43
-  target: waypoint_23
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-- plan: 111
-  start: waypoint_23
-  target: waypoint_3
-  path:
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_3
-- plan: 112
-  start: waypoint_3
-  target: waypoint_32
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-- plan: 113
-  start: waypoint_32
-  target: waypoint_3
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_3
-- plan: 114
-  start: waypoint_3
-  target: waypoint_17
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-- plan: 115
-  start: waypoint_17
-  target: waypoint_21
-  path:
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-- plan: 116
-  start: waypoint_21
-  target: waypoint_43
-  path:
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 117
-  start: waypoint_43
-  target: waypoint_19
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-- plan: 118
-  start: waypoint_19
-  target: waypoint_18
-  path:
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_18
-- plan: 119
-  start: waypoint_18
-  target: waypoint_36
-  path:
-  - waypoint_18
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 120
-  start: waypoint_36
-  target: waypoint_32
-  path:
-  - waypoint_36
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-- plan: 121
-  start: waypoint_32
-  target: waypoint_30
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-  - waypoint_30
-- plan: 122
-  start: waypoint_30
-  target: waypoint_12
-  path:
-  - waypoint_30
-  - waypoint_31
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-- plan: 123
-  start: waypoint_12
-  target: waypoint_1
-  path:
-  - waypoint_12
-  - waypoint_5
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 124
-  start: waypoint_1
-  target: waypoint_7
-  path:
-  - waypoint_1
-  - waypoint_7
-- plan: 125
-  start: waypoint_7
-  target: waypoint_42
-  path:
-  - waypoint_7
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-- plan: 126
-  start: waypoint_42
-  target: waypoint_23
-  path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-- plan: 127
-  start: waypoint_23
-  target: waypoint_38
-  path:
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 128
-  start: waypoint_38
-  target: waypoint_9
-  path:
-  - waypoint_38
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-- plan: 129
-  start: waypoint_9
-  target: waypoint_21
-  path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-- plan: 130
-  start: waypoint_21
-  target: waypoint_38
-  path:
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 131
-  start: waypoint_38
-  target: waypoint_16
-  path:
-  - waypoint_38
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-- plan: 132
-  start: waypoint_16
-  target: waypoint_15
-  path:
-  - waypoint_16
-  - waypoint_15
-- plan: 133
-  start: waypoint_15
-  target: waypoint_1
-  path:
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 134
-  start: waypoint_1
-  target: waypoint_23
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_6
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-- plan: 135
-  start: waypoint_23
   target: waypoint_2
   path:
-  - waypoint_23
-  - waypoint_12
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
   - waypoint_5
   - waypoint_3
   - waypoint_2
-- plan: 136
+- plan: 46
   start: waypoint_2
-  target: waypoint_35
+  target: waypoint_42
   path:
   - waypoint_2
   - waypoint_3
@@ -1442,212 +569,112 @@ plans:
   - waypoint_24
   - waypoint_25
   - waypoint_26
-  - waypoint_27
-  - waypoint_35
-- plan: 137
-  start: waypoint_35
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 47
+  start: waypoint_42
   target: waypoint_43
   path:
+  - waypoint_42
+  - waypoint_43
+- plan: 48
+  start: waypoint_43
+  target: waypoint_11
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 49
+  start: waypoint_11
+  target: waypoint_42
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
   - waypoint_35
   - waypoint_34
   - waypoint_33
   - waypoint_32
   - waypoint_42
-  - waypoint_43
-- plan: 138
-  start: waypoint_43
-  target: waypoint_17
+- plan: 50
+  start: waypoint_42
+  target: waypoint_7
   path:
-  - waypoint_43
   - waypoint_42
   - waypoint_32
   - waypoint_33
   - waypoint_26
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-- plan: 139
-  start: waypoint_17
-  target: waypoint_20
-  path:
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-- plan: 140
-  start: waypoint_20
-  target: waypoint_3
-  path:
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_5
-  - waypoint_3
-- plan: 141
-  start: waypoint_3
-  target: waypoint_6
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_6
-- plan: 142
-  start: waypoint_6
-  target: waypoint_24
-  path:
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
+  - waypoint_25
   - waypoint_19
-  - waypoint_25
-  - waypoint_24
-- plan: 143
-  start: waypoint_24
-  target: waypoint_39
-  path:
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 144
-  start: waypoint_39
-  target: waypoint_3
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
   - waypoint_20
   - waypoint_14
   - waypoint_6
-  - waypoint_5
-  - waypoint_3
-- plan: 145
-  start: waypoint_3
-  target: waypoint_10
+  - waypoint_7
+- plan: 51
+  start: waypoint_7
+  target: waypoint_37
   path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_6
   - waypoint_7
   - waypoint_8
   - waypoint_9
   - waypoint_10
-- plan: 146
-  start: waypoint_10
-  target: waypoint_13
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 52
+  start: waypoint_37
+  target: waypoint_39
   path:
-  - waypoint_10
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
   - waypoint_16
   - waypoint_15
   - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_13
-- plan: 147
-  start: waypoint_13
-  target: waypoint_12
-  path:
-  - waypoint_13
-  - waypoint_12
-- plan: 148
-  start: waypoint_12
-  target: waypoint_38
-  path:
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
   - waypoint_27
   - waypoint_35
   - waypoint_36
   - waypoint_40
   - waypoint_39
-  - waypoint_38
-- plan: 149
-  start: waypoint_38
-  target: waypoint_34
+- plan: 53
+  start: waypoint_39
+  target: waypoint_22
   path:
-  - waypoint_38
   - waypoint_39
   - waypoint_40
   - waypoint_36
   - waypoint_35
-  - waypoint_34
-- plan: 150
-  start: waypoint_34
-  target: waypoint_13
-  path:
-  - waypoint_34
-  - waypoint_33
+  - waypoint_27
   - waypoint_26
   - waypoint_25
-  - waypoint_19
-  - waypoint_13
-- plan: 151
-  start: waypoint_13
-  target: waypoint_22
-  path:
-  - waypoint_13
-  - waypoint_12
+  - waypoint_24
   - waypoint_23
   - waypoint_22
-- plan: 152
+- plan: 54
   start: waypoint_22
-  target: waypoint_34
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_34
-- plan: 153
-  start: waypoint_34
-  target: waypoint_12
-  path:
-  - waypoint_34
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-- plan: 154
-  start: waypoint_12
-  target: waypoint_24
-  path:
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-- plan: 155
-  start: waypoint_24
-  target: waypoint_20
-  path:
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-- plan: 156
-  start: waypoint_20
   target: waypoint_3
   path:
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
+  - waypoint_22
+  - waypoint_23
+  - waypoint_12
   - waypoint_5
   - waypoint_3
-- plan: 157
+- plan: 55
   start: waypoint_3
   target: waypoint_41
   path:
@@ -1662,9 +689,962 @@ plans:
   - waypoint_32
   - waypoint_42
   - waypoint_41
-- plan: 158
+- plan: 56
   start: waypoint_41
-  target: waypoint_16
+  target: waypoint_23
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 57
+  start: waypoint_23
+  target: waypoint_1
+  path:
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 58
+  start: waypoint_1
+  target: waypoint_38
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 59
+  start: waypoint_38
+  target: waypoint_43
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 60
+  start: waypoint_43
+  target: waypoint_24
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 61
+  start: waypoint_24
+  target: waypoint_42
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 62
+  start: waypoint_42
+  target: waypoint_39
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_34
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 63
+  start: waypoint_39
+  target: waypoint_43
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 64
+  start: waypoint_43
+  target: waypoint_23
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 65
+  start: waypoint_23
+  target: waypoint_37
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 66
+  start: waypoint_37
+  target: waypoint_1
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_1
+- plan: 67
+  start: waypoint_1
+  target: waypoint_18
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 68
+  start: waypoint_18
+  target: waypoint_37
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 69
+  start: waypoint_37
+  target: waypoint_42
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 70
+  start: waypoint_42
+  target: waypoint_30
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 71
+  start: waypoint_30
+  target: waypoint_7
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 72
+  start: waypoint_7
+  target: waypoint_11
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 73
+  start: waypoint_11
+  target: waypoint_3
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 74
+  start: waypoint_3
+  target: waypoint_37
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 75
+  start: waypoint_37
+  target: waypoint_7
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+- plan: 76
+  start: waypoint_7
+  target: waypoint_18
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 77
+  start: waypoint_18
+  target: waypoint_38
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 78
+  start: waypoint_38
+  target: waypoint_7
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 79
+  start: waypoint_7
+  target: waypoint_37
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 80
+  start: waypoint_37
+  target: waypoint_38
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 81
+  start: waypoint_38
+  target: waypoint_4
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 82
+  start: waypoint_4
+  target: waypoint_2
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 83
+  start: waypoint_2
+  target: waypoint_11
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 84
+  start: waypoint_11
+  target: waypoint_41
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 85
+  start: waypoint_41
+  target: waypoint_30
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 86
+  start: waypoint_30
+  target: waypoint_2
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 87
+  start: waypoint_2
+  target: waypoint_6
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+- plan: 88
+  start: waypoint_6
+  target: waypoint_43
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 89
+  start: waypoint_43
+  target: waypoint_6
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+- plan: 90
+  start: waypoint_6
+  target: waypoint_41
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 91
+  start: waypoint_41
+  target: waypoint_3
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 92
+  start: waypoint_3
+  target: waypoint_24
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+- plan: 93
+  start: waypoint_24
+  target: waypoint_23
+  path:
+  - waypoint_24
+  - waypoint_23
+- plan: 94
+  start: waypoint_23
+  target: waypoint_24
+  path:
+  - waypoint_23
+  - waypoint_24
+- plan: 95
+  start: waypoint_24
+  target: waypoint_42
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 96
+  start: waypoint_42
+  target: waypoint_1
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 97
+  start: waypoint_1
+  target: waypoint_6
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+- plan: 98
+  start: waypoint_6
+  target: waypoint_4
+  path:
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 99
+  start: waypoint_4
+  target: waypoint_40
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 100
+  start: waypoint_40
+  target: waypoint_7
+  path:
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 101
+  start: waypoint_7
+  target: waypoint_39
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 102
+  start: waypoint_39
+  target: waypoint_24
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 103
+  start: waypoint_24
+  target: waypoint_18
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 104
+  start: waypoint_18
+  target: waypoint_40
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 105
+  start: waypoint_40
+  target: waypoint_2
+  path:
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 106
+  start: waypoint_2
+  target: waypoint_11
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 107
+  start: waypoint_11
+  target: waypoint_43
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 108
+  start: waypoint_43
+  target: waypoint_24
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 109
+  start: waypoint_24
+  target: waypoint_4
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 110
+  start: waypoint_4
+  target: waypoint_40
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 111
+  start: waypoint_40
+  target: waypoint_38
+  path:
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 112
+  start: waypoint_38
+  target: waypoint_7
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 113
+  start: waypoint_7
+  target: waypoint_38
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 114
+  start: waypoint_38
+  target: waypoint_43
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 115
+  start: waypoint_43
+  target: waypoint_37
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 116
+  start: waypoint_37
+  target: waypoint_11
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 117
+  start: waypoint_11
+  target: waypoint_1
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_1
+- plan: 118
+  start: waypoint_1
+  target: waypoint_22
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_22
+- plan: 119
+  start: waypoint_22
+  target: waypoint_1
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 120
+  start: waypoint_1
+  target: waypoint_4
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 121
+  start: waypoint_4
+  target: waypoint_18
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 122
+  start: waypoint_18
+  target: waypoint_22
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 123
+  start: waypoint_22
+  target: waypoint_3
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 124
+  start: waypoint_3
+  target: waypoint_38
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 125
+  start: waypoint_38
+  target: waypoint_39
+  path:
+  - waypoint_38
+  - waypoint_39
+- plan: 126
+  start: waypoint_39
+  target: waypoint_11
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 127
+  start: waypoint_11
+  target: waypoint_3
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 128
+  start: waypoint_3
+  target: waypoint_2
+  path:
+  - waypoint_3
+  - waypoint_2
+- plan: 129
+  start: waypoint_2
+  target: waypoint_43
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 130
+  start: waypoint_43
+  target: waypoint_6
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+- plan: 131
+  start: waypoint_6
+  target: waypoint_41
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 132
+  start: waypoint_41
+  target: waypoint_11
   path:
   - waypoint_41
   - waypoint_42
@@ -1675,10 +1655,60 @@ plans:
   - waypoint_21
   - waypoint_15
   - waypoint_16
-- plan: 159
-  start: waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 133
+  start: waypoint_11
+  target: waypoint_4
+  path:
+  - waypoint_11
+  - waypoint_4
+- plan: 134
+  start: waypoint_4
+  target: waypoint_30
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 135
+  start: waypoint_30
+  target: waypoint_11
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 136
+  start: waypoint_11
+  target: waypoint_18
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 137
+  start: waypoint_18
   target: waypoint_23
   path:
+  - waypoint_18
+  - waypoint_17
   - waypoint_16
   - waypoint_15
   - waypoint_21
@@ -1687,51 +1717,301 @@ plans:
   - waypoint_25
   - waypoint_24
   - waypoint_23
-- plan: 160
+- plan: 138
   start: waypoint_23
-  target: waypoint_34
+  target: waypoint_39
   path:
   - waypoint_23
   - waypoint_24
   - waypoint_25
   - waypoint_26
-  - waypoint_33
-  - waypoint_34
-- plan: 161
-  start: waypoint_34
-  target: waypoint_24
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 139
+  start: waypoint_39
+  target: waypoint_7
   path:
-  - waypoint_34
-  - waypoint_33
-  - waypoint_26
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 140
+  start: waypoint_7
+  target: waypoint_38
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 141
+  start: waypoint_38
+  target: waypoint_40
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+- plan: 142
+  start: waypoint_40
+  target: waypoint_6
+  path:
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+- plan: 143
+  start: waypoint_6
+  target: waypoint_40
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 144
+  start: waypoint_40
+  target: waypoint_6
+  path:
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+- plan: 145
+  start: waypoint_6
+  target: waypoint_30
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
   - waypoint_25
   - waypoint_24
-- plan: 162
-  start: waypoint_24
-  target: waypoint_5
+  - waypoint_31
+  - waypoint_30
+- plan: 146
+  start: waypoint_30
+  target: waypoint_22
   path:
+  - waypoint_30
+  - waypoint_31
   - waypoint_24
   - waypoint_23
-  - waypoint_12
-  - waypoint_5
-- plan: 163
-  start: waypoint_5
-  target: waypoint_3
+  - waypoint_22
+- plan: 147
+  start: waypoint_22
+  target: waypoint_42
   path:
-  - waypoint_5
-  - waypoint_3
-- plan: 164
-  start: waypoint_3
-  target: waypoint_23
-  path:
-  - waypoint_3
-  - waypoint_5
-  - waypoint_12
+  - waypoint_22
   - waypoint_23
-- plan: 165
-  start: waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 148
+  start: waypoint_42
+  target: waypoint_4
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 149
+  start: waypoint_4
   target: waypoint_37
   path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 150
+  start: waypoint_37
+  target: waypoint_30
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 151
+  start: waypoint_30
+  target: waypoint_7
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 152
+  start: waypoint_7
+  target: waypoint_18
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 153
+  start: waypoint_18
+  target: waypoint_24
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+- plan: 154
+  start: waypoint_24
+  target: waypoint_39
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 155
+  start: waypoint_39
+  target: waypoint_38
+  path:
+  - waypoint_39
+  - waypoint_38
+- plan: 156
+  start: waypoint_38
+  target: waypoint_1
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 157
+  start: waypoint_1
+  target: waypoint_7
+  path:
+  - waypoint_1
+  - waypoint_7
+- plan: 158
+  start: waypoint_7
+  target: waypoint_43
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 159
+  start: waypoint_43
+  target: waypoint_41
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_41
+- plan: 160
+  start: waypoint_41
+  target: waypoint_18
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 161
+  start: waypoint_18
+  target: waypoint_22
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 162
+  start: waypoint_22
+  target: waypoint_37
+  path:
+  - waypoint_22
   - waypoint_23
   - waypoint_24
   - waypoint_25
@@ -1744,9 +2024,9 @@ plans:
   - waypoint_28
   - waypoint_29
   - waypoint_37
-- plan: 166
+- plan: 163
   start: waypoint_37
-  target: waypoint_9
+  target: waypoint_7
   path:
   - waypoint_37
   - waypoint_29
@@ -1754,166 +2034,153 @@ plans:
   - waypoint_17
   - waypoint_16
   - waypoint_10
-  - waypoint_9
-- plan: 167
-  start: waypoint_9
-  target: waypoint_23
-  path:
   - waypoint_9
   - waypoint_8
   - waypoint_7
-  - waypoint_6
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-- plan: 168
-  start: waypoint_23
+- plan: 164
+  start: waypoint_7
+  target: waypoint_1
+  path:
+  - waypoint_7
+  - waypoint_1
+- plan: 165
+  start: waypoint_1
   target: waypoint_40
   path:
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
   - waypoint_27
   - waypoint_35
   - waypoint_36
   - waypoint_40
-- plan: 169
+- plan: 166
   start: waypoint_40
-  target: waypoint_32
+  target: waypoint_24
   path:
   - waypoint_40
   - waypoint_36
   - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-- plan: 170
-  start: waypoint_32
-  target: waypoint_15
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
   - waypoint_27
-  - waypoint_21
-  - waypoint_15
-- plan: 171
-  start: waypoint_15
-  target: waypoint_37
-  path:
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 172
-  start: waypoint_37
-  target: waypoint_29
-  path:
-  - waypoint_37
-  - waypoint_29
-- plan: 173
-  start: waypoint_29
-  target: waypoint_30
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
+  - waypoint_26
   - waypoint_25
   - waypoint_24
-  - waypoint_31
-  - waypoint_30
-- plan: 174
-  start: waypoint_30
-  target: waypoint_10
+- plan: 167
+  start: waypoint_24
+  target: waypoint_43
   path:
-  - waypoint_30
-  - waypoint_31
   - waypoint_24
   - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-- plan: 175
-  start: waypoint_10
-  target: waypoint_23
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-- plan: 176
-  start: waypoint_23
-  target: waypoint_4
-  path:
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-  - waypoint_11
-  - waypoint_4
-- plan: 177
-  start: waypoint_4
-  target: waypoint_21
-  path:
-  - waypoint_4
-  - waypoint_11
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-- plan: 178
-  start: waypoint_21
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 168
+  start: waypoint_43
   target: waypoint_3
   path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 169
+  start: waypoint_3
+  target: waypoint_7
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 170
+  start: waypoint_7
+  target: waypoint_38
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 171
+  start: waypoint_38
+  target: waypoint_3
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
   - waypoint_21
   - waypoint_20
   - waypoint_14
   - waypoint_6
   - waypoint_5
   - waypoint_3
-- plan: 179
+- plan: 172
   start: waypoint_3
-  target: waypoint_20
+  target: waypoint_7
   path:
   - waypoint_3
   - waypoint_5
   - waypoint_6
-  - waypoint_14
-  - waypoint_20
-- plan: 180
-  start: waypoint_20
+  - waypoint_7
+- plan: 173
+  start: waypoint_7
+  target: waypoint_18
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 174
+  start: waypoint_18
+  target: waypoint_40
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 175
+  start: waypoint_40
   target: waypoint_22
   path:
-  - waypoint_20
-  - waypoint_19
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
   - waypoint_25
   - waypoint_24
   - waypoint_23
   - waypoint_22
-- plan: 181
+- plan: 176
   start: waypoint_22
-  target: waypoint_17
+  target: waypoint_37
   path:
   - waypoint_22
   - waypoint_23
@@ -1925,22 +2192,35 @@ plans:
   - waypoint_15
   - waypoint_16
   - waypoint_17
-- plan: 182
-  start: waypoint_17
-  target: waypoint_37
-  path:
-  - waypoint_17
   - waypoint_28
   - waypoint_29
   - waypoint_37
-- plan: 183
+- plan: 177
   start: waypoint_37
-  target: waypoint_42
+  target: waypoint_18
   path:
   - waypoint_37
   - waypoint_29
   - waypoint_28
   - waypoint_17
+  - waypoint_18
+- plan: 178
+  start: waypoint_18
+  target: waypoint_4
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 179
+  start: waypoint_4
+  target: waypoint_41
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
   - waypoint_16
   - waypoint_15
   - waypoint_21
@@ -1950,22 +2230,80 @@ plans:
   - waypoint_33
   - waypoint_32
   - waypoint_42
-- plan: 184
+  - waypoint_41
+- plan: 180
+  start: waypoint_41
+  target: waypoint_38
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_34
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 181
+  start: waypoint_38
+  target: waypoint_1
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 182
+  start: waypoint_1
+  target: waypoint_42
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 183
   start: waypoint_42
-  target: waypoint_27
+  target: waypoint_23
   path:
   - waypoint_42
   - waypoint_32
   - waypoint_33
   - waypoint_26
-  - waypoint_27
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 184
+  start: waypoint_23
+  target: waypoint_30
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
 - plan: 185
-  start: waypoint_27
+  start: waypoint_30
   target: waypoint_42
   path:
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
   - waypoint_33
   - waypoint_32
   - waypoint_42
@@ -1984,27 +2322,66 @@ plans:
   - waypoint_38
 - plan: 187
   start: waypoint_38
-  target: waypoint_34
+  target: waypoint_37
   path:
   - waypoint_38
   - waypoint_39
   - waypoint_40
   - waypoint_36
   - waypoint_35
-  - waypoint_34
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
 - plan: 188
-  start: waypoint_34
-  target: waypoint_19
+  start: waypoint_37
+  target: waypoint_3
   path:
-  - waypoint_34
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
 - plan: 189
-  start: waypoint_19
-  target: waypoint_28
+  start: waypoint_3
+  target: waypoint_7
   path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 190
+  start: waypoint_7
+  target: waypoint_30
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 191
+  start: waypoint_30
+  target: waypoint_37
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
   - waypoint_19
   - waypoint_20
   - waypoint_21
@@ -2012,10 +2389,74 @@ plans:
   - waypoint_16
   - waypoint_17
   - waypoint_28
-- plan: 190
-  start: waypoint_28
-  target: waypoint_30
+  - waypoint_29
+  - waypoint_37
+- plan: 192
+  start: waypoint_37
+  target: waypoint_41
   path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 193
+  start: waypoint_41
+  target: waypoint_43
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_43
+- plan: 194
+  start: waypoint_43
+  target: waypoint_7
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 195
+  start: waypoint_7
+  target: waypoint_6
+  path:
+  - waypoint_7
+  - waypoint_6
+- plan: 196
+  start: waypoint_6
+  target: waypoint_37
+  path:
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 197
+  start: waypoint_37
+  target: waypoint_22
+  path:
+  - waypoint_37
+  - waypoint_29
   - waypoint_28
   - waypoint_17
   - waypoint_16
@@ -2025,9 +2466,248 @@ plans:
   - waypoint_19
   - waypoint_25
   - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 198
+  start: waypoint_22
+  target: waypoint_41
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 199
+  start: waypoint_41
+  target: waypoint_30
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
   - waypoint_31
   - waypoint_30
-- plan: 191
+- plan: 200
+  start: waypoint_30
+  target: waypoint_6
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+- plan: 201
+  start: waypoint_6
+  target: waypoint_40
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 202
+  start: waypoint_40
+  target: waypoint_38
+  path:
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 203
+  start: waypoint_38
+  target: waypoint_4
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 204
+  start: waypoint_4
+  target: waypoint_3
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 205
+  start: waypoint_3
+  target: waypoint_39
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 206
+  start: waypoint_39
+  target: waypoint_3
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 207
+  start: waypoint_3
+  target: waypoint_23
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+- plan: 208
+  start: waypoint_23
+  target: waypoint_7
+  path:
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 209
+  start: waypoint_7
+  target: waypoint_42
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 210
+  start: waypoint_42
+  target: waypoint_1
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 211
+  start: waypoint_1
+  target: waypoint_24
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+- plan: 212
+  start: waypoint_24
+  target: waypoint_1
+  path:
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 213
+  start: waypoint_1
+  target: waypoint_39
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 214
+  start: waypoint_39
+  target: waypoint_24
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 215
+  start: waypoint_24
+  target: waypoint_6
+  path:
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+- plan: 216
+  start: waypoint_6
+  target: waypoint_3
+  path:
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 217
+  start: waypoint_3
+  target: waypoint_30
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 218
   start: waypoint_30
   target: waypoint_4
   path:
@@ -2043,9 +2723,9 @@ plans:
   - waypoint_10
   - waypoint_11
   - waypoint_4
-- plan: 192
+- plan: 219
   start: waypoint_4
-  target: waypoint_14
+  target: waypoint_2
   path:
   - waypoint_4
   - waypoint_11
@@ -2054,50 +2734,26 @@ plans:
   - waypoint_8
   - waypoint_7
   - waypoint_6
-  - waypoint_14
-- plan: 193
-  start: waypoint_14
-  target: waypoint_37
-  path:
-  - waypoint_14
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 194
-  start: waypoint_37
-  target: waypoint_36
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 195
-  start: waypoint_36
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 220
+  start: waypoint_2
   target: waypoint_4
   path:
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
   - waypoint_10
   - waypoint_11
   - waypoint_4
-- plan: 196
+- plan: 221
   start: waypoint_4
-  target: waypoint_42
+  target: waypoint_43
   path:
   - waypoint_4
   - waypoint_11
@@ -2111,238 +2767,11 @@ plans:
   - waypoint_33
   - waypoint_32
   - waypoint_42
-- plan: 197
-  start: waypoint_42
-  target: waypoint_2
-  path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-  - waypoint_3
-  - waypoint_2
-- plan: 198
-  start: waypoint_2
-  target: waypoint_27
-  path:
-  - waypoint_2
-  - waypoint_3
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-- plan: 199
-  start: waypoint_27
-  target: waypoint_38
-  path:
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 200
-  start: waypoint_38
-  target: waypoint_1
-  path:
-  - waypoint_38
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 201
-  start: waypoint_1
-  target: waypoint_10
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-- plan: 202
-  start: waypoint_10
-  target: waypoint_36
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 203
-  start: waypoint_36
-  target: waypoint_40
-  path:
-  - waypoint_36
-  - waypoint_40
-- plan: 204
-  start: waypoint_40
+  - waypoint_43
+- plan: 222
+  start: waypoint_43
   target: waypoint_11
   path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-  - waypoint_11
-- plan: 205
-  start: waypoint_11
-  target: waypoint_1
-  path:
-  - waypoint_11
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_1
-- plan: 206
-  start: waypoint_1
-  target: waypoint_21
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_21
-- plan: 207
-  start: waypoint_21
-  target: waypoint_19
-  path:
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-- plan: 208
-  start: waypoint_19
-  target: waypoint_16
-  path:
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-- plan: 209
-  start: waypoint_16
-  target: waypoint_20
-  path:
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-- plan: 210
-  start: waypoint_20
-  target: waypoint_36
-  path:
-  - waypoint_20
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 211
-  start: waypoint_36
-  target: waypoint_40
-  path:
-  - waypoint_36
-  - waypoint_40
-- plan: 212
-  start: waypoint_40
-  target: waypoint_18
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_18
-- plan: 213
-  start: waypoint_18
-  target: waypoint_42
-  path:
-  - waypoint_18
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-- plan: 214
-  start: waypoint_42
-  target: waypoint_40
-  path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_34
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-- plan: 215
-  start: waypoint_40
-  target: waypoint_26
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-- plan: 216
-  start: waypoint_26
-  target: waypoint_1
-  path:
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 217
-  start: waypoint_1
-  target: waypoint_43
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 218
-  start: waypoint_43
-  target: waypoint_18
-  path:
   - waypoint_43
   - waypoint_42
   - waypoint_32
@@ -2352,299 +2781,54 @@ plans:
   - waypoint_21
   - waypoint_15
   - waypoint_16
-  - waypoint_17
-  - waypoint_18
-- plan: 219
-  start: waypoint_18
-  target: waypoint_28
-  path:
-  - waypoint_18
-  - waypoint_17
-  - waypoint_28
-- plan: 220
-  start: waypoint_28
-  target: waypoint_38
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 221
-  start: waypoint_38
-  target: waypoint_1
-  path:
-  - waypoint_38
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_1
-- plan: 222
-  start: waypoint_1
-  target: waypoint_10
-  path:
-  - waypoint_1
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
   - waypoint_10
+  - waypoint_11
 - plan: 223
-  start: waypoint_10
-  target: waypoint_9
+  start: waypoint_11
+  target: waypoint_39
   path:
+  - waypoint_11
   - waypoint_10
-  - waypoint_9
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
 - plan: 224
-  start: waypoint_9
-  target: waypoint_35
+  start: waypoint_39
+  target: waypoint_24
   path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
   - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
 - plan: 225
-  start: waypoint_35
-  target: waypoint_39
+  start: waypoint_24
+  target: waypoint_4
   path:
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
 - plan: 226
-  start: waypoint_39
-  target: waypoint_32
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-- plan: 227
-  start: waypoint_32
-  target: waypoint_22
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_22
-- plan: 228
-  start: waypoint_22
-  target: waypoint_39
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 229
-  start: waypoint_39
-  target: waypoint_9
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-- plan: 230
-  start: waypoint_9
-  target: waypoint_16
-  path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-- plan: 231
-  start: waypoint_16
-  target: waypoint_37
-  path:
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 232
-  start: waypoint_37
-  target: waypoint_40
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-- plan: 233
-  start: waypoint_40
-  target: waypoint_12
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_12
-- plan: 234
-  start: waypoint_12
-  target: waypoint_29
-  path:
-  - waypoint_12
-  - waypoint_13
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-- plan: 235
-  start: waypoint_29
-  target: waypoint_5
-  path:
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-  - waypoint_5
-- plan: 236
-  start: waypoint_5
-  target: waypoint_40
-  path:
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-- plan: 237
-  start: waypoint_40
-  target: waypoint_22
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_26
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_22
-- plan: 238
-  start: waypoint_22
-  target: waypoint_36
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-- plan: 239
-  start: waypoint_36
-  target: waypoint_37
-  path:
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 240
-  start: waypoint_37
-  target: waypoint_40
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-- plan: 241
-  start: waypoint_40
-  target: waypoint_13
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_13
-- plan: 242
-  start: waypoint_13
-  target: waypoint_17
-  path:
-  - waypoint_13
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-- plan: 243
-  start: waypoint_17
+  start: waypoint_4
   target: waypoint_2
   path:
-  - waypoint_17
-  - waypoint_16
+  - waypoint_4
+  - waypoint_11
   - waypoint_10
   - waypoint_9
   - waypoint_8
@@ -2653,57 +2837,22 @@ plans:
   - waypoint_5
   - waypoint_3
   - waypoint_2
-- plan: 244
+- plan: 227
   start: waypoint_2
-  target: waypoint_19
+  target: waypoint_1
   path:
   - waypoint_2
   - waypoint_3
   - waypoint_5
-  - waypoint_12
-  - waypoint_13
-  - waypoint_19
-- plan: 245
-  start: waypoint_19
-  target: waypoint_5
-  path:
-  - waypoint_19
-  - waypoint_13
-  - waypoint_12
-  - waypoint_5
-- plan: 246
-  start: waypoint_5
-  target: waypoint_37
-  path:
-  - waypoint_5
   - waypoint_6
   - waypoint_7
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 247
-  start: waypoint_37
-  target: waypoint_6
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-  - waypoint_9
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-- plan: 248
-  start: waypoint_6
+  - waypoint_1
+- plan: 228
+  start: waypoint_1
   target: waypoint_40
   path:
+  - waypoint_1
+  - waypoint_7
   - waypoint_6
   - waypoint_14
   - waypoint_20
@@ -2712,408 +2861,161 @@ plans:
   - waypoint_35
   - waypoint_36
   - waypoint_40
-- plan: 249
+- plan: 229
   start: waypoint_40
-  target: waypoint_13
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_13
-- plan: 250
-  start: waypoint_13
-  target: waypoint_31
-  path:
-  - waypoint_13
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-- plan: 251
-  start: waypoint_31
-  target: waypoint_28
-  path:
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 252
-  start: waypoint_28
-  target: waypoint_17
-  path:
-  - waypoint_28
-  - waypoint_17
-- plan: 253
-  start: waypoint_17
   target: waypoint_23
   path:
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
   - waypoint_25
   - waypoint_24
   - waypoint_23
-- plan: 254
+- plan: 230
   start: waypoint_23
-  target: waypoint_43
-  path:
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_43
-- plan: 255
-  start: waypoint_43
-  target: waypoint_28
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 256
-  start: waypoint_28
-  target: waypoint_22
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_23
-  - waypoint_22
-- plan: 257
-  start: waypoint_22
-  target: waypoint_21
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-- plan: 258
-  start: waypoint_21
-  target: waypoint_38
-  path:
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-  - waypoint_38
-- plan: 259
-  start: waypoint_38
-  target: waypoint_35
-  path:
-  - waypoint_38
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-- plan: 260
-  start: waypoint_35
-  target: waypoint_10
-  path:
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_10
-- plan: 261
-  start: waypoint_10
-  target: waypoint_37
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 262
-  start: waypoint_37
-  target: waypoint_33
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-- plan: 263
-  start: waypoint_33
-  target: waypoint_8
-  path:
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-- plan: 264
-  start: waypoint_8
-  target: waypoint_22
-  path:
-  - waypoint_8
-  - waypoint_7
-  - waypoint_6
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_22
-- plan: 265
-  start: waypoint_22
-  target: waypoint_21
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_21
-- plan: 266
-  start: waypoint_21
-  target: waypoint_15
-  path:
-  - waypoint_21
-  - waypoint_15
-- plan: 267
-  start: waypoint_15
-  target: waypoint_31
-  path:
-  - waypoint_15
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_24
-  - waypoint_31
-- plan: 268
-  start: waypoint_31
-  target: waypoint_14
-  path:
-  - waypoint_31
-  - waypoint_24
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-- plan: 269
-  start: waypoint_14
-  target: waypoint_41
-  path:
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_41
-- plan: 270
-  start: waypoint_41
-  target: waypoint_43
-  path:
-  - waypoint_41
-  - waypoint_42
-  - waypoint_43
-- plan: 271
-  start: waypoint_43
-  target: waypoint_6
-  path:
-  - waypoint_43
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-  - waypoint_19
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-- plan: 272
-  start: waypoint_6
-  target: waypoint_41
-  path:
-  - waypoint_6
-  - waypoint_14
-  - waypoint_20
-  - waypoint_19
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_32
-  - waypoint_42
-  - waypoint_41
-- plan: 273
-  start: waypoint_41
   target: waypoint_39
   path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 231
+  start: waypoint_39
+  target: waypoint_24
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 232
+  start: waypoint_24
+  target: waypoint_22
+  path:
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 233
+  start: waypoint_22
+  target: waypoint_18
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 234
+  start: waypoint_18
+  target: waypoint_41
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 235
+  start: waypoint_41
+  target: waypoint_18
+  path:
   - waypoint_41
   - waypoint_42
   - waypoint_32
   - waypoint_33
-  - waypoint_34
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 274
-  start: waypoint_39
-  target: waypoint_34
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_34
-- plan: 275
-  start: waypoint_34
-  target: waypoint_5
-  path:
-  - waypoint_34
-  - waypoint_33
   - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 236
+  start: waypoint_18
+  target: waypoint_24
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
   - waypoint_25
   - waypoint_24
-  - waypoint_23
-  - waypoint_12
-  - waypoint_5
-- plan: 276
-  start: waypoint_5
-  target: waypoint_25
+- plan: 237
+  start: waypoint_24
+  target: waypoint_43
   path:
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
   - waypoint_24
-  - waypoint_25
-- plan: 277
-  start: waypoint_25
-  target: waypoint_42
-  path:
   - waypoint_25
   - waypoint_26
   - waypoint_33
   - waypoint_32
   - waypoint_42
-- plan: 278
-  start: waypoint_42
+  - waypoint_43
+- plan: 238
+  start: waypoint_43
+  target: waypoint_23
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 239
+  start: waypoint_23
+  target: waypoint_30
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 240
+  start: waypoint_30
   target: waypoint_18
   path:
-  - waypoint_42
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
-  - waypoint_27
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_18
-- plan: 279
-  start: waypoint_18
-  target: waypoint_32
-  path:
-  - waypoint_18
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_34
-  - waypoint_33
-  - waypoint_32
-- plan: 280
-  start: waypoint_32
-  target: waypoint_20
-  path:
-  - waypoint_32
-  - waypoint_33
-  - waypoint_26
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
   - waypoint_25
   - waypoint_19
   - waypoint_20
-- plan: 281
-  start: waypoint_20
-  target: waypoint_9
-  path:
-  - waypoint_20
-  - waypoint_14
-  - waypoint_6
-  - waypoint_7
-  - waypoint_8
-  - waypoint_9
-- plan: 282
-  start: waypoint_9
-  target: waypoint_40
-  path:
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-- plan: 283
-  start: waypoint_40
-  target: waypoint_10
-  path:
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
   - waypoint_21
   - waypoint_15
   - waypoint_16
-  - waypoint_10
-- plan: 284
-  start: waypoint_10
+  - waypoint_17
+  - waypoint_18
+- plan: 241
+  start: waypoint_18
   target: waypoint_43
   path:
-  - waypoint_10
+  - waypoint_18
+  - waypoint_17
   - waypoint_16
   - waypoint_15
   - waypoint_21
@@ -3124,7 +3026,7 @@ plans:
   - waypoint_32
   - waypoint_42
   - waypoint_43
-- plan: 285
+- plan: 242
   start: waypoint_43
   target: waypoint_1
   path:
@@ -3140,150 +3042,168 @@ plans:
   - waypoint_6
   - waypoint_7
   - waypoint_1
-- plan: 286
+- plan: 243
   start: waypoint_1
-  target: waypoint_8
+  target: waypoint_6
   path:
   - waypoint_1
   - waypoint_7
-  - waypoint_8
-- plan: 287
-  start: waypoint_8
-  target: waypoint_39
-  path:
-  - waypoint_8
-  - waypoint_9
-  - waypoint_10
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 288
-  start: waypoint_39
-  target: waypoint_36
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-- plan: 289
-  start: waypoint_36
-  target: waypoint_5
-  path:
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_14
   - waypoint_6
-  - waypoint_5
-- plan: 290
-  start: waypoint_5
-  target: waypoint_22
+- plan: 244
+  start: waypoint_6
+  target: waypoint_41
   path:
-  - waypoint_5
-  - waypoint_12
-  - waypoint_23
-  - waypoint_22
-- plan: 291
-  start: waypoint_22
-  target: waypoint_34
-  path:
-  - waypoint_22
-  - waypoint_23
-  - waypoint_24
-  - waypoint_25
-  - waypoint_26
-  - waypoint_33
-  - waypoint_34
-- plan: 292
-  start: waypoint_34
-  target: waypoint_25
-  path:
-  - waypoint_34
-  - waypoint_33
-  - waypoint_26
-  - waypoint_25
-- plan: 293
-  start: waypoint_25
-  target: waypoint_21
-  path:
-  - waypoint_25
-  - waypoint_19
+  - waypoint_6
+  - waypoint_14
   - waypoint_20
-  - waypoint_21
-- plan: 294
-  start: waypoint_21
-  target: waypoint_37
-  path:
-  - waypoint_21
-  - waypoint_15
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-  - waypoint_29
-  - waypoint_37
-- plan: 295
-  start: waypoint_37
-  target: waypoint_10
-  path:
-  - waypoint_37
-  - waypoint_29
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_10
-- plan: 296
-  start: waypoint_10
-  target: waypoint_28
-  path:
-  - waypoint_10
-  - waypoint_16
-  - waypoint_17
-  - waypoint_28
-- plan: 297
-  start: waypoint_28
-  target: waypoint_39
-  path:
-  - waypoint_28
-  - waypoint_17
-  - waypoint_16
-  - waypoint_15
-  - waypoint_21
-  - waypoint_27
-  - waypoint_35
-  - waypoint_36
-  - waypoint_40
-  - waypoint_39
-- plan: 298
-  start: waypoint_39
-  target: waypoint_19
-  path:
-  - waypoint_39
-  - waypoint_40
-  - waypoint_36
-  - waypoint_35
-  - waypoint_27
-  - waypoint_21
-  - waypoint_20
-  - waypoint_19
-- plan: 299
-  start: waypoint_19
-  target: waypoint_32
-  path:
   - waypoint_19
   - waypoint_25
   - waypoint_26
   - waypoint_33
   - waypoint_32
-- plan: 300
-  start: waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 245
+  start: waypoint_41
+  target: waypoint_1
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 246
+  start: waypoint_1
+  target: waypoint_23
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+- plan: 247
+  start: waypoint_23
+  target: waypoint_1
+  path:
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 248
+  start: waypoint_1
+  target: waypoint_41
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 249
+  start: waypoint_41
+  target: waypoint_22
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 250
+  start: waypoint_22
+  target: waypoint_23
+  path:
+  - waypoint_22
+  - waypoint_23
+- plan: 251
+  start: waypoint_23
+  target: waypoint_41
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 252
+  start: waypoint_41
+  target: waypoint_3
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 253
+  start: waypoint_3
+  target: waypoint_4
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 254
+  start: waypoint_4
+  target: waypoint_41
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 255
+  start: waypoint_41
+  target: waypoint_43
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_43
+- plan: 256
+  start: waypoint_43
   target: waypoint_30
   path:
+  - waypoint_43
+  - waypoint_42
   - waypoint_32
   - waypoint_33
   - waypoint_26
@@ -3291,3 +3211,567 @@ plans:
   - waypoint_24
   - waypoint_31
   - waypoint_30
+- plan: 257
+  start: waypoint_30
+  target: waypoint_38
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+  - waypoint_38
+- plan: 258
+  start: waypoint_38
+  target: waypoint_23
+  path:
+  - waypoint_38
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 259
+  start: waypoint_23
+  target: waypoint_30
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 260
+  start: waypoint_30
+  target: waypoint_22
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 261
+  start: waypoint_22
+  target: waypoint_41
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_41
+- plan: 262
+  start: waypoint_41
+  target: waypoint_4
+  path:
+  - waypoint_41
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_27
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 263
+  start: waypoint_4
+  target: waypoint_39
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 264
+  start: waypoint_39
+  target: waypoint_7
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+- plan: 265
+  start: waypoint_7
+  target: waypoint_11
+  path:
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 266
+  start: waypoint_11
+  target: waypoint_30
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 267
+  start: waypoint_30
+  target: waypoint_39
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 268
+  start: waypoint_39
+  target: waypoint_22
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_22
+- plan: 269
+  start: waypoint_22
+  target: waypoint_30
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 270
+  start: waypoint_30
+  target: waypoint_11
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+- plan: 271
+  start: waypoint_11
+  target: waypoint_39
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 272
+  start: waypoint_39
+  target: waypoint_23
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+- plan: 273
+  start: waypoint_23
+  target: waypoint_6
+  path:
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_6
+- plan: 274
+  start: waypoint_6
+  target: waypoint_39
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 275
+  start: waypoint_39
+  target: waypoint_30
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_31
+  - waypoint_30
+- plan: 276
+  start: waypoint_30
+  target: waypoint_18
+  path:
+  - waypoint_30
+  - waypoint_31
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 277
+  start: waypoint_18
+  target: waypoint_42
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_34
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 278
+  start: waypoint_42
+  target: waypoint_6
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+- plan: 279
+  start: waypoint_6
+  target: waypoint_39
+  path:
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
+- plan: 280
+  start: waypoint_39
+  target: waypoint_3
+  path:
+  - waypoint_39
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 281
+  start: waypoint_3
+  target: waypoint_22
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_22
+- plan: 282
+  start: waypoint_22
+  target: waypoint_4
+  path:
+  - waypoint_22
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_10
+  - waypoint_11
+  - waypoint_4
+- plan: 283
+  start: waypoint_4
+  target: waypoint_24
+  path:
+  - waypoint_4
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_24
+- plan: 284
+  start: waypoint_24
+  target: waypoint_43
+  path:
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+  - waypoint_43
+- plan: 285
+  start: waypoint_43
+  target: waypoint_24
+  path:
+  - waypoint_43
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+- plan: 286
+  start: waypoint_24
+  target: waypoint_23
+  path:
+  - waypoint_24
+  - waypoint_23
+- plan: 287
+  start: waypoint_23
+  target: waypoint_37
+  path:
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_21
+  - waypoint_15
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 288
+  start: waypoint_37
+  target: waypoint_2
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_10
+  - waypoint_9
+  - waypoint_8
+  - waypoint_7
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+  - waypoint_2
+- plan: 289
+  start: waypoint_2
+  target: waypoint_42
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_12
+  - waypoint_23
+  - waypoint_24
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 290
+  start: waypoint_42
+  target: waypoint_3
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_24
+  - waypoint_23
+  - waypoint_12
+  - waypoint_5
+  - waypoint_3
+- plan: 291
+  start: waypoint_3
+  target: waypoint_7
+  path:
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+- plan: 292
+  start: waypoint_7
+  target: waypoint_42
+  path:
+  - waypoint_7
+  - waypoint_6
+  - waypoint_14
+  - waypoint_20
+  - waypoint_19
+  - waypoint_25
+  - waypoint_26
+  - waypoint_33
+  - waypoint_32
+  - waypoint_42
+- plan: 293
+  start: waypoint_42
+  target: waypoint_1
+  path:
+  - waypoint_42
+  - waypoint_32
+  - waypoint_33
+  - waypoint_26
+  - waypoint_25
+  - waypoint_19
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_7
+  - waypoint_1
+- plan: 294
+  start: waypoint_1
+  target: waypoint_11
+  path:
+  - waypoint_1
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_11
+- plan: 295
+  start: waypoint_11
+  target: waypoint_18
+  path:
+  - waypoint_11
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_18
+- plan: 296
+  start: waypoint_18
+  target: waypoint_40
+  path:
+  - waypoint_18
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+- plan: 297
+  start: waypoint_40
+  target: waypoint_3
+  path:
+  - waypoint_40
+  - waypoint_36
+  - waypoint_35
+  - waypoint_27
+  - waypoint_21
+  - waypoint_20
+  - waypoint_14
+  - waypoint_6
+  - waypoint_5
+  - waypoint_3
+- plan: 298
+  start: waypoint_3
+  target: waypoint_2
+  path:
+  - waypoint_3
+  - waypoint_2
+- plan: 299
+  start: waypoint_2
+  target: waypoint_37
+  path:
+  - waypoint_2
+  - waypoint_3
+  - waypoint_5
+  - waypoint_6
+  - waypoint_7
+  - waypoint_8
+  - waypoint_9
+  - waypoint_10
+  - waypoint_16
+  - waypoint_17
+  - waypoint_28
+  - waypoint_29
+  - waypoint_37
+- plan: 300
+  start: waypoint_37
+  target: waypoint_39
+  path:
+  - waypoint_37
+  - waypoint_29
+  - waypoint_28
+  - waypoint_17
+  - waypoint_16
+  - waypoint_15
+  - waypoint_21
+  - waypoint_27
+  - waypoint_35
+  - waypoint_36
+  - waypoint_40
+  - waypoint_39
