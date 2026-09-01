@@ -17,7 +17,6 @@ class LayoutDevelopmentModeConfig:
     storage_utilization_target: float
     event_period_seconds: float
     event_random_actions: int
-    static_fill_fraction: Optional[float] = None
 
 
 MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
@@ -44,7 +43,14 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
         storage_utilization_target=0.5,
         event_period_seconds=0,
         event_random_actions=0,
-        static_fill_fraction=0.5,
+    ),
+    "random_changes_only": LayoutDevelopmentModeConfig(
+        name="random_changes_only",
+        runtime_minutes=15,
+        storage_utilization_start=0.4,
+        storage_utilization_target=0.4,
+        event_period_seconds=5,
+        event_random_actions=20,
     ),
 }
 
@@ -415,11 +421,7 @@ class LayoutDevelopmentController:
         )
 
     def _initial_occupied_count(self) -> int:
-        if self._config.static_fill_fraction is not None:
-            fraction = self._config.static_fill_fraction
-        else:
-            fraction = self._config.storage_utilization_start
-        return int(round(fraction * self.total_bins))
+        return int(round(self._config.storage_utilization_start * self.total_bins))
 
     def is_finished(self, sim_time: float) -> bool:
         if not self._started or self._start_sim_time is None:
