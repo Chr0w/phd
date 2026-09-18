@@ -183,7 +183,7 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        self._selected_setup_name = "setup_1"
+        self._selected_setup_name = "test_reach"
         self._load_setup_from_yaml()
 
         self._previous_speed = 0.0
@@ -257,7 +257,10 @@ class SegMap(BaseSample):
                 self.Setup.user,
                 int(self.Setup.seed_nr),
             )
-            self._manual_asset_manager.initialize(self._layout_config)
+            self._manual_asset_manager.initialize(
+                self._layout_config,
+                origin_xy=self.Setup.start_position,
+            )
         return self._manual_asset_manager
 
     def _configure_visual_cube(self, prim_path, translate, scale, color, opacity=None):
@@ -303,6 +306,7 @@ class SegMap(BaseSample):
             config,
             self.Setup.user,
             int(self.Setup.seed_nr),
+            origin_xy=self.Setup.start_position,
         )
         self._layout_dev_started = False
 
@@ -825,7 +829,10 @@ class SegMap(BaseSample):
         if not self._layout_config:
             self._load_layout_config()
 
-        section_ids = robot_utils.layout_section_ids(self._layout_config)
+        section_ids = robot_utils.layout_section_ids_by_distance(
+            self._layout_config,
+            self.Setup.start_position,
+        )
         if not section_ids:
             print("No sections found in layout config")
             return

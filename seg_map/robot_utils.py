@@ -170,6 +170,47 @@ def layout_section_ids(layout: dict) -> list[str]:
     return [str(section.get("id", f"section_{index}")) for index, section in enumerate(layout.get("sections", []), start=1)]
 
 
+def section_centroids(layout: dict) -> dict[str, tuple[float, float]]:
+    """Return average bin-center position per section id."""
+    sums: dict[str, list[float]] = {}
+    for bin_data in all_layout_bins(layout):
+        section_id = bin_data["section_id"]
+        if section_id not in sums:
+            sums[section_id] = [0.0, 0.0, 0.0]
+        sums[section_id][0] += float(bin_data["center_x"])
+        sums[section_id][1] += float(bin_data["center_y"])
+        sums[section_id][2] += 1.0
+
+    centroids: dict[str, tuple[float, float]] = {}
+    for section_id, (sum_x, sum_y, count) in sums.items():
+        if count <= 0:
+            continue
+        centroids[section_id] = (sum_x / count, sum_y / count)
+    return centroids
+
+
+def layout_section_ids_by_distance(
+    layout: dict,
+    origin_xy: list[float] | tuple[float, float] | None,
+) -> list[str]:
+    """Return section ids sorted near-to-far from origin_xy; layout order if no origin."""
+    section_ids = layout_section_ids(layout)
+    if not origin_xy or len(origin_xy) < 2:
+        return section_ids
+
+    origin_x = float(origin_xy[0])
+    origin_y = float(origin_xy[1])
+    centroids = section_centroids(layout)
+
+    def distance_key(section_id: str) -> tuple[float, str]:
+        center = centroids.get(section_id)
+        if center is None:
+            return (float("inf"), section_id)
+        return (math.hypot(center[0] - origin_x, center[1] - origin_y), section_id)
+
+    return sorted(section_ids, key=distance_key)
+
+
 def section_bins(layout: dict, section_id: str, size: str) -> list[dict]:
     for section in layout.get("sections", []):
         if str(section.get("id")) != section_id:

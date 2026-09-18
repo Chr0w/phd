@@ -52,6 +52,14 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
         event_period_seconds=5,
         event_random_actions=20,
     ),
+    "test_reach": LayoutDevelopmentModeConfig(
+        name="test_reach",
+        runtime_minutes=5,
+        storage_utilization_start=1.0,
+        storage_utilization_target=1.0,
+        event_period_seconds=0,
+        event_random_actions=0,
+    ),
 }
 
 
@@ -104,8 +112,14 @@ class BinAssetManager:
         self._slot_templates: dict[str, dict] = {}
         self._groups_ready: set[tuple[str, str]] = set()
         self._pending_updates: deque[tuple[str, str, str, str]] = deque()
+        self._section_order: list[str] = []
+        self._section_rank: dict[str, int] = {}
 
-    def initialize(self, layout: dict) -> None:
+    def initialize(
+        self,
+        layout: dict,
+        origin_xy: list[float] | tuple[float, float] | None = None,
+    ) -> None:
         self._asset_pools = {}
         for size in robot_utils.BIN_ASSET_SIZES:
             assets = robot_utils.list_bin_assets(self._user, size)
@@ -123,6 +137,11 @@ class BinAssetManager:
         for group_keys in self._group_keys.values():
             group_keys.sort()
 
+        self._section_order = robot_utils.layout_section_ids_by_distance(layout, origin_xy)
+        self._section_rank = {
+            section_id: index for index, section_id in enumerate(self._section_order)
+        }
+
         self._group_bin_index = {
             group: {bin_key: index for index, bin_key in enumerate(keys)}
             for group, keys in self._group_keys.items()
@@ -130,6 +149,11 @@ class BinAssetManager:
         self._slot_templates = {}
         self._groups_ready = set()
         self._pending_updates.clear()
+
+    def _bin_spawn_sort_key(self, bin_key: str) -> tuple[int, str, int]:
+        bin_data = self._bin_catalog[bin_key]
+        section_rank = self._section_rank.get(bin_data["section_id"], 10**9)
+        return (section_rank, bin_data["size"], bin_data["number"])
 
     @property
     def total_bins(self) -> int:
@@ -292,7 +316,7 @@ class BinAssetManager:
             if bin_key in self._occupied:
                 self.remove_bin(bin_key, flush=False)
         spawned = 0
-        for bin_key in sorted(section_keys):
+        for bin_key in sorted(section_keys, key=self._bin_spawn_sort_key):
             if self._add_bin_internal(bin_key):
                 spawned += 1
                 self._queue_visibility_update("show", bin_key)
@@ -304,7 +328,7 @@ class BinAssetManager:
         self._pending_updates.clear()
         spawned = 0
 
-        for bin_key in sorted(bin_keys):
+        for bin_key in sorted(bin_keys, key=self._bin_spawn_sort_key):
             if bin_key not in self._bin_catalog:
                 continue
             if self._add_bin_internal(bin_key):
@@ -363,12 +387,13 @@ class LayoutDevelopmentController:
         config: LayoutDevelopmentModeConfig,
         user: str,
         seed_nr: int,
+        origin_xy: list[float] | tuple[float, float] | None = None,
     ) -> None:
         self._config = config
         self._seed_nr = seed_nr
         self._rng = random.Random(seed_nr)
         self._asset_manager = BinAssetManager(stage, user, seed_nr)
-        self._asset_manager.initialize(layout)
+        self._asset_manager.initialize(layout, origin_xy=origin_xy)
 
         self._actions_per_event = compute_actions_per_event(
             self._asset_manager.total_bins, config

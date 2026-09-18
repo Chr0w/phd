@@ -76,6 +76,16 @@ def get_all_setups(user: str = None):
             layout_development_mode="fill_up",
             only_plan_anchor_waypoints=True,
         ),
+                Setup(
+            name="test_reach",
+            user=user,
+            mission_file_path=f"/home/{user}/isaac_sim_files/robots/{mir_bot}/{mir_bot}.usd",
+            map_usd_path=f"/home/{user}/isaac_sim_files/maps/test_reach/test_reach.usd",
+            seed_nr=1,
+            robot_prim_name=mir_bot,
+            layout_development_mode="test_reach",
+            only_plan_anchor_waypoints=False,
+        ),
     ]
     
     return setups
