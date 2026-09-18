@@ -368,6 +368,66 @@ def shortest_waypoint_path(
     return path
 
 
+def generate_ordered_waypoint_plans(
+    layout: dict,
+    num_plans: int = NUM_WAYPOINT_PLANS,
+    start_waypoint_id: str = DEFAULT_START_WAYPOINT_ID,
+) -> list[dict]:
+    """
+    Visit waypoints in ID order: first go to wp1 (from wherever the robot starts),
+    then wp2 -> ... -> wpN, then loop back to wp1.
+
+    Each consecutive pair after the first becomes one plan using the shortest graph path.
+    """
+    graph = build_waypoint_graph(layout)
+    positions = layout_waypoint_positions(layout)
+    if not positions:
+        return []
+
+    ordered_ids = sorted(positions.keys(), key=_waypoint_id_sort_key)
+    if len(ordered_ids) < 2:
+        raise RuntimeError("Need at least two waypoints to run waypoints in order")
+
+    if start_waypoint_id in ordered_ids:
+        start_index = ordered_ids.index(start_waypoint_id)
+    else:
+        start_index = 0
+
+    first_waypoint_id = ordered_ids[start_index]
+    plans: list[dict] = [
+        {
+            "plan": 1,
+            "start": first_waypoint_id,
+            "target": first_waypoint_id,
+            # Single-node path: robot is not assumed to already be here.
+            "path": [first_waypoint_id],
+        }
+    ]
+
+    current_index = start_index
+    for plan_number in range(2, num_plans + 1):
+        current_waypoint_id = ordered_ids[current_index]
+        next_index = (current_index + 1) % len(ordered_ids)
+        target_waypoint_id = ordered_ids[next_index]
+        path = shortest_waypoint_path(graph, current_waypoint_id, target_waypoint_id)
+        if path is None:
+            raise RuntimeError(
+                f"No path from {current_waypoint_id} to {target_waypoint_id} for ordered plan {plan_number}"
+            )
+
+        plans.append(
+            {
+                "plan": plan_number,
+                "start": current_waypoint_id,
+                "target": target_waypoint_id,
+                "path": path,
+            }
+        )
+        current_index = next_index
+
+    return plans
+
+
 def generate_waypoint_plans(
     layout: dict,
     num_plans: int = NUM_WAYPOINT_PLANS,
@@ -460,7 +520,10 @@ def setup_missions_from_plans(
     mission_number = 0
     for plan in plans:
         path = plan.get("path", [])
-        for waypoint_id in path[1:]:
+        # Multi-node paths skip the start node (already there). Single-node paths
+        # are used when the robot should navigate to that waypoint from elsewhere.
+        waypoints_to_visit = path if len(path) <= 1 else path[1:]
+        for waypoint_id in waypoints_to_visit:
             x, y = positions[waypoint_id]
             mission = Mission(
                 mission_number,

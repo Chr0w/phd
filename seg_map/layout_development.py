@@ -54,7 +54,7 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     ),
     "test_reach": LayoutDevelopmentModeConfig(
         name="test_reach",
-        runtime_minutes=2.75,
+        runtime_minutes=30,
         storage_utilization_start=0.75,
         storage_utilization_target=0.75,
         event_period_seconds=0,

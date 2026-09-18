@@ -466,31 +466,39 @@ class SegMap(BaseSample):
     def _setup_missions_and_robot_position(self):
         """
         Common setup code for missions and robot positioning.
-        Generates 300 random shortest-path plans and creates missions from them.
+        Generates waypoint plans (random or ordered) and creates missions from them.
         """
         self._load_layout_config()
         self._spawn_layout_waypoints()
         self._init_layout_development()
 
         seed = int(self.Setup.seed_nr)
-        target_waypoint_ids = None
-        if self.Setup.only_plan_anchor_waypoints:
-            target_waypoint_ids = robot_utils.layout_anchor_waypoint_ids(self._layout_config)
-            if not target_waypoint_ids:
-                raise ValueError(
-                    "only_plan_anchor_waypoints is enabled but no waypoints lie inside layout anchor_points"
-                )
-            print(
-                f"Plan targets restricted to {len(target_waypoint_ids)} anchor waypoint(s)"
+        if self.Setup.run_waypoints_in_order:
+            print("Generating waypoint plans in order (wp1 -> wp2 -> ... -> loop)")
+            self._waypoint_plans = robot_utils.generate_ordered_waypoint_plans(
+                self._layout_config,
+                num_plans=robot_utils.NUM_WAYPOINT_PLANS,
+                start_waypoint_id=robot_utils.DEFAULT_START_WAYPOINT_ID,
             )
+        else:
+            target_waypoint_ids = None
+            if self.Setup.only_plan_anchor_waypoints:
+                target_waypoint_ids = robot_utils.layout_anchor_waypoint_ids(self._layout_config)
+                if not target_waypoint_ids:
+                    raise ValueError(
+                        "only_plan_anchor_waypoints is enabled but no waypoints lie inside layout anchor_points"
+                    )
+                print(
+                    f"Plan targets restricted to {len(target_waypoint_ids)} anchor waypoint(s)"
+                )
 
-        self._waypoint_plans = robot_utils.generate_waypoint_plans(
-            self._layout_config,
-            num_plans=robot_utils.NUM_WAYPOINT_PLANS,
-            seed=seed,
-            start_waypoint_id=robot_utils.DEFAULT_START_WAYPOINT_ID,
-            target_waypoint_ids=target_waypoint_ids,
-        )
+            self._waypoint_plans = robot_utils.generate_waypoint_plans(
+                self._layout_config,
+                num_plans=robot_utils.NUM_WAYPOINT_PLANS,
+                seed=seed,
+                start_waypoint_id=robot_utils.DEFAULT_START_WAYPOINT_ID,
+                target_waypoint_ids=target_waypoint_ids,
+            )
         self._plan_count = len(self._waypoint_plans)
 
         plans_path = robot_utils.waypoint_plans_path()

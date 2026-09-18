@@ -2,7 +2,7 @@ import os
 import random
 
 class Setup():
-    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None, layout_development_mode: str = None, only_plan_anchor_waypoints: bool = False, start_delay_seconds: float = 0.0) -> None:
+    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None, layout_development_mode: str = None, only_plan_anchor_waypoints: bool = False, run_waypoints_in_order: bool = False, start_delay_seconds: float = 0.0) -> None:
         self._name = name
         self._user = user
         self._mission_file = mission_file_path
@@ -12,6 +12,7 @@ class Setup():
         self._start_position = start_position
         self._layout_development_mode = layout_development_mode
         self._only_plan_anchor_waypoints = only_plan_anchor_waypoints
+        self._run_waypoints_in_order = run_waypoints_in_order
         self._start_delay_seconds = start_delay_seconds
     @property
     def name(self):
@@ -50,6 +51,10 @@ class Setup():
         return self._only_plan_anchor_waypoints
 
     @property
+    def run_waypoints_in_order(self):
+        return self._run_waypoints_in_order
+
+    @property
     def start_delay_seconds(self):
         return self._start_delay_seconds
 
@@ -80,6 +85,7 @@ def get_all_setups(user: str = None):
             robot_prim_name=mir_bot,
             layout_development_mode="fill_up",
             only_plan_anchor_waypoints=True,
+            run_waypoints_in_order=False,
             start_delay_seconds=0,
         ),
         Setup(
@@ -91,6 +97,7 @@ def get_all_setups(user: str = None):
             robot_prim_name=mir_bot,
             layout_development_mode="test_reach",
             only_plan_anchor_waypoints=False,
+            run_waypoints_in_order=True,
             start_delay_seconds=5,
         ),
     ]
