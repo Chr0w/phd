@@ -90,6 +90,11 @@ class SegMap(BaseSample):
         self._missions_started = True
         self._mission_loop_logged = False
         self.previous_time_ = SimulationManager.get_simulation_time()
+        self._mission_arm_time = self.previous_time_
+        self._start_delay_elapsed_logged = False
+        delay = float(self.Setup.start_delay_seconds or 0.0)
+        if delay > 0.0:
+            print(f"Robot motion delayed for {delay:.1f}s after start")
         self._start_layout_development(self.previous_time_)
         self.register_sim_step_callback()
         app_utils.play()
@@ -99,8 +104,21 @@ class SegMap(BaseSample):
         self._missions_started = True
         self._mission_loop_logged = False
         self.previous_time_ = time
+        self._mission_arm_time = time
+        self._start_delay_elapsed_logged = False
+        delay = float(self.Setup.start_delay_seconds or 0.0)
+        if delay > 0.0:
+            print(f"Robot motion delayed for {delay:.1f}s after start")
         self._start_layout_development(time)
         print("Mission loop armed from timeline play")
+
+    def _robot_motion_allowed(self, time: float) -> bool:
+        delay = float(self.Setup.start_delay_seconds or 0.0)
+        if delay <= 0.0:
+            return True
+        if self._mission_arm_time is None:
+            return False
+        return (time - self._mission_arm_time) >= delay
 
     def _ensure_robot_ready(self):
         self._ensure_robot_asset()
@@ -198,6 +216,8 @@ class SegMap(BaseSample):
         self._sim_step_callback_subscription = None
         self._missions_started = False
         self._mission_loop_logged = False
+        self._mission_arm_time: Optional[float] = None
+        self._start_delay_elapsed_logged = False
         self._layout_dev: Optional[LayoutDevelopmentController] = None
         self._layout_dev_started = False
         self._layout_instancers_prewarmed = False
@@ -508,6 +528,8 @@ class SegMap(BaseSample):
     def setup_scene(self):
         self.deregister_sim_step_callback()
         self._missions_started = False
+        self._mission_arm_time = None
+        self._start_delay_elapsed_logged = False
         self._layout_dev = None
         self._layout_dev_started = False
         self._layout_instancers_prewarmed = False
@@ -765,8 +787,15 @@ class SegMap(BaseSample):
 
         if self.manual_control:
             self._step_manual_control()
-        else:
+        elif self._robot_motion_allowed(time):
+            if not self._start_delay_elapsed_logged:
+                delay = float(self.Setup.start_delay_seconds or 0.0)
+                if delay > 0.0:
+                    print(f"Start delay complete ({delay:.1f}s) — robot motion enabled")
+                self._start_delay_elapsed_logged = True
             self.step_mission(time)
+        else:
+            self.stop_motion()
         self.previous_time_ = time
 
     async def setup_post_load(self):
@@ -791,6 +820,8 @@ class SegMap(BaseSample):
         self.stop_motion()
         self._missions_started = False
         self._mission_loop_logged = False
+        self._mission_arm_time = None
+        self._start_delay_elapsed_logged = False
         self._misisons = []
         self._current_mission_number = 0
         self._all_missions_completed = False
