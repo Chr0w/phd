@@ -124,6 +124,46 @@ def _strip_rigid_bodies_recursive(stage, prim_path):
         stack.extend(current.GetChildren())
 
 
+def strip_collisions_recursive(stage, prim_path):
+    """Remove CollisionAPI / MeshCollisionAPI from prim_path and descendants."""
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return
+
+    stack = [prim]
+    while stack:
+        current = stack.pop()
+        if UsdPhysics.CollisionAPI.Get(stage, current.GetPath()):
+            current.RemoveAPI(UsdPhysics.CollisionAPI)
+        if hasattr(UsdPhysics, "MeshCollisionAPI") and UsdPhysics.MeshCollisionAPI.Get(
+            stage, current.GetPath()
+        ):
+            current.RemoveAPI(UsdPhysics.MeshCollisionAPI)
+        stack.extend(current.GetChildren())
+
+
+def apply_convex_hull_colliders(stage, prim_path):
+    """
+    Ensure mesh geometry under prim_path has CollisionAPI with convexHull approx.
+
+    Convex hulls keep lidar returns close to object shape while staying much
+    cheaper than triangle meshes, especially when many instances move.
+    """
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return
+
+    stack = [prim]
+    while stack:
+        current = stack.pop()
+        if current.IsA(UsdGeom.Mesh):
+            if not UsdPhysics.CollisionAPI.Get(stage, current.GetPath()):
+                UsdPhysics.CollisionAPI.Apply(current)
+            mesh_api = UsdPhysics.MeshCollisionAPI.Apply(current)
+            mesh_api.CreateApproximationAttr().Set(UsdPhysics.Tokens.convexHull)
+        stack.extend(current.GetChildren())
+
+
 def _yaw_degrees_to_quat_h(yaw_degrees):
     half_yaw = math.radians(float(yaw_degrees)) / 2.0
     return Gf.Quath(math.cos(half_yaw), 0.0, 0.0, math.sin(half_yaw))
@@ -492,34 +532,74 @@ def _obb_overlap_sat(c1, A1, e1, c2, A2, e2):
     return True
 
 
+def _first_mesh_descendant(prim):
+    """Return the prim itself if it has geometry; otherwise first Mesh descendant (depth-first)."""
+    if UsdGeom.Mesh(prim):
+        return prim
+    stack = list(prim.GetChildren())
+    while stack:
+        p = stack.pop(0)
+        if UsdGeom.Mesh(p):
+            return p
+        stack.extend(p.GetChildren())
+    return prim  # fallback
+
+
+def _prim_obb_components(stage, prim_path):
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return None
+    geom = _first_mesh_descendant(prim)
+    return _bbox_to_obb_components(stage, UsdGeom.Imageable(geom))
+
+
 def prims_overlap_obb(prim_path_a: str, prim_path_b: str) -> bool:
     """Return True if two prims' oriented bounding boxes overlap (world frame)."""
     stage = omni.usd.get_context().get_stage()
-    prim_a = _get_prim(stage, prim_path_a)
-    prim_b = _get_prim(stage, prim_path_b)
-    if not (prim_a and prim_a.IsValid() and prim_b and prim_b.IsValid()):
+    obb_a = _prim_obb_components(stage, prim_path_a)
+    obb_b = _prim_obb_components(stage, prim_path_b)
+    if obb_a is None or obb_b is None:
         return False
-
-    def _first_mesh_descendant(prim):
-        """Return the prim itself if it has geometry; otherwise first Mesh descendant (depth-first)."""
-        if UsdGeom.Mesh(prim):
-            return prim
-        stack = list(prim.GetChildren())
-        while stack:
-            p = stack.pop(0)
-            if UsdGeom.Mesh(p):
-                return p
-            stack.extend(p.GetChildren())
-        return prim  # fallback
-
-    prim_a_geom = _first_mesh_descendant(prim_a)
-    prim_b_geom = _first_mesh_descendant(prim_b)
-
-    img_a = UsdGeom.Imageable(prim_a_geom)
-    img_b = UsdGeom.Imageable(prim_b_geom)
-    c1, A1, e1 = _bbox_to_obb_components(stage, img_a)
-    c2, A2, e2 = _bbox_to_obb_components(stage, img_b)
+    c1, A1, e1 = obb_a
+    c2, A2, e2 = obb_b
     return _obb_overlap_sat(c1, A1, e1, c2, A2, e2)
+
+
+def prims_within_overlap_margin_obb(
+    prim_path_a: str,
+    prim_path_b: str,
+    margin_m: float = 0.1,
+) -> bool:
+    """True if OBBs are overlapping or within margin_m of overlapping."""
+    stage = omni.usd.get_context().get_stage()
+    obb_a = _prim_obb_components(stage, prim_path_a)
+    obb_b = _prim_obb_components(stage, prim_path_b)
+    if obb_a is None or obb_b is None:
+        return False
+    c1, A1, e1 = obb_a
+    c2, A2, e2 = obb_b
+    expand = max(0.0, float(margin_m)) * 0.5
+    e1_exp = e1 + expand
+    e2_exp = e2 + expand
+    return _obb_overlap_sat(c1, A1, e1_exp, c2, A2, e2_exp)
+
+
+def set_prim_tree_collision_enabled(stage, prim_path, enabled: bool) -> None:
+    """Enable or disable CollisionAPI on prim_path and all descendants."""
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return
+
+    stack = [prim]
+    while stack:
+        current = stack.pop()
+        collision_api = UsdPhysics.CollisionAPI.Get(stage, current.GetPath())
+        if collision_api:
+            attr = collision_api.GetCollisionEnabledAttr()
+            if not attr:
+                attr = collision_api.CreateCollisionEnabledAttr()
+            attr.Set(bool(enabled))
+        stack.extend(current.GetChildren())
 
 def get_sim_time(sim_context):
     return sim_context.current_time

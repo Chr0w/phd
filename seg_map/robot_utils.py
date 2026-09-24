@@ -166,6 +166,16 @@ def list_bin_assets(user: str | None = None, size: str = "large") -> list[str]:
     return sorted(glob.glob(os.path.join(bin_assets_dir(user, size), "*.usd")))
 
 
+def dynamic_agent_assets_dir(user: str | None = None) -> str:
+    if user is None:
+        user = os.environ.get("USER", "unknown")
+    return f"/home/{user}/isaac_sim_files/assets/dynamics"
+
+
+def list_dynamic_agent_assets(user: str | None = None) -> list[str]:
+    return sorted(glob.glob(os.path.join(dynamic_agent_assets_dir(user), "*.usd")))
+
+
 def layout_section_ids(layout: dict) -> list[str]:
     return [str(section.get("id", f"section_{index}")) for index, section in enumerate(layout.get("sections", []), start=1)]
 

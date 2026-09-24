@@ -201,7 +201,7 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        self._selected_setup_name = "test_reach"
+        self._selected_setup_name = "test_dynamics"
         self._load_setup_from_yaml()
 
         self._previous_speed = 0.0
@@ -785,7 +785,20 @@ class SegMap(BaseSample):
             self._publish_sim_progress(time)
 
         if self._layout_dev:
-            self._layout_dev.update(time)
+            robot_xy_fn = None
+            if self._layout_dev.dynamic_agents is not None:
+                def robot_xy_fn():
+                    try:
+                        robot_pos, _ = self._robot_world_pose()
+                        return (float(robot_pos[0]), float(robot_pos[1]))
+                    except Exception:
+                        return None
+
+            self._layout_dev.update(
+                time,
+                step_size=self._motion_step_size(),
+                robot_xy_fn=robot_xy_fn,
+            )
             self._schedule_layout_usd_worker()
             if self._layout_dev.is_finished(time):
                 self._stop_simulation()
