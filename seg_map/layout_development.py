@@ -430,8 +430,10 @@ class DynamicAgentsController:
     Shared USD prototypes give visual realism; convex-hull colliders on the
     solid prototypes give lidar returns close to the mesh shape. Per-frame
     cost is two array writes (positions + orientations) regardless of count.
-    Pass-through swaps an instance to a collision-free ghost prototype of the
-    same asset so visuals stay while agents/robot can overlap.
+
+    Pass-through swaps to a ghost prototype of the same asset that stays
+    render-visible but is PhysX-collision-free and tagged ``clear_glass`` so
+    RTX lidar rays transmit instead of returning hits from inside the mesh.
     """
 
     def __init__(
@@ -538,11 +540,11 @@ class DynamicAgentsController:
         self, assets: list[str]
     ) -> tuple[dict[str, int], dict[str, int]]:
         """
-        Build shared solid (lidar collision) + ghost (pass-through) prototypes.
+        Build solid (lidar collision) + ghost (visible, lidar-transmissive) prototypes.
 
-        Prototype indices are dense from 0. For each asset:
-          even index = solid (convex-hull colliders)
-          odd index  = ghost (same mesh, no collision)
+        For each asset:
+          solid = convex-hull colliders for normal lidar returns
+          ghost = same visual, no PhysX collision, clear_glass non-visual tag
         """
         prototypes_root = f"{self._instancer_path}/Prototypes"
         UsdGeom.Xform.Define(self._stage, prototypes_root)
@@ -565,7 +567,7 @@ class DynamicAgentsController:
             ghost_path = f"{prototypes_root}/proto_{next_index:02d}"
             isu.add_reference_to_stage(usd_path=asset_path, prim_path=ghost_path)
             isu._strip_rigid_bodies_recursive(self._stage, ghost_path)
-            isu.strip_collisions_recursive(self._stage, ghost_path)
+            isu.mark_prototype_lidar_transmissive(self._stage, ghost_path)
             ghost_proto[asset_path] = next_index
             proto_paths.append(ghost_path)
             next_index += 1
@@ -763,6 +765,8 @@ class DynamicAgentsController:
             if agent.collision_enabled == enabled:
                 continue
             agent.collision_enabled = enabled
+            # Ghost stays render-visible; clear_glass non-visual + no PhysX
+            # collider lets RTX lidar transmit instead of returning interior hits.
             self._proto_indices[agent.slot] = (
                 agent.solid_proto if enabled else agent.ghost_proto
             )

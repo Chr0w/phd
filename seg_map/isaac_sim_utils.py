@@ -164,6 +164,57 @@ def apply_convex_hull_colliders(stage, prim_path):
         stack.extend(current.GetChildren())
 
 
+def mark_prototype_lidar_transmissive(stage, prim_path):
+    """
+    Keep geometry render-visible but make RTX lidar treat it as clear glass.
+
+    Strips PhysX colliders and tags bound materials with the SimReady non-visual
+    base ``clear_glass`` so sensor rays transmit instead of returning a hit.
+    """
+    from pxr import UsdShade
+
+    strip_collisions_recursive(stage, prim_path)
+    prim = _get_prim(stage, prim_path)
+    if not prim or not prim.IsValid():
+        return
+
+    material_paths = set()
+    for current in Usd.PrimRange(prim):
+        if current.IsA(UsdShade.Material):
+            material_paths.add(current.GetPath())
+            continue
+        if not current.IsA(UsdGeom.Imageable):
+            continue
+        try:
+            bound_material, _ = UsdShade.MaterialBindingAPI(current).ComputeBoundMaterial()
+        except Exception:
+            bound_material = None
+        if bound_material:
+            material_paths.add(bound_material.GetPrim().GetPath())
+
+    if not material_paths:
+        # Ensure there is at least one material to carry the non-visual tag.
+        mat_path = f"{prim_path}/Looks/LidarPassThrough"
+        material = UsdShade.Material.Define(stage, mat_path)
+        material_paths.add(material.GetPath())
+        for current in Usd.PrimRange(prim):
+            if current.IsA(UsdGeom.Mesh) or current.IsA(UsdGeom.Gprim):
+                UsdShade.MaterialBindingAPI(current).Bind(material)
+
+    for mat_path in material_paths:
+        mat_prim = stage.GetPrimAtPath(mat_path)
+        if not mat_prim or not mat_prim.IsValid():
+            continue
+        for attr_name, value in (
+            ("omni:simready:nonvisual:base", "clear_glass"),
+            ("omni:simready:nonvisual:coating", "none"),
+        ):
+            attr = mat_prim.GetAttribute(attr_name)
+            if not attr:
+                attr = mat_prim.CreateAttribute(attr_name, Sdf.ValueTypeNames.String, custom=True)
+            attr.Set(value)
+
+
 def _yaw_degrees_to_quat_h(yaw_degrees):
     half_yaw = math.radians(float(yaw_degrees)) / 2.0
     return Gf.Quath(math.cos(half_yaw), 0.0, 0.0, math.sin(half_yaw))
