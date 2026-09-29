@@ -84,7 +84,7 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
         storage_utilization_target=0.0,
         event_period_seconds=0,
         event_random_actions=0,
-        dynamic_agents=10,
+        dynamic_agents=100,
     ),
 }
 
@@ -472,12 +472,8 @@ class DynamicAgentsController:
     def _validate_spawn_requirements(self) -> None:
         if self._agent_count <= 0:
             return
-        waypoint_count = len(self._positions)
-        if waypoint_count < self._agent_count:
-            raise RuntimeError(
-                f"Need at least {self._agent_count} waypoints to spawn "
-                f"{self._agent_count} dynamic agents, found {waypoint_count}"
-            )
+        if not self._positions:
+            raise RuntimeError("Need at least one waypoint to spawn dynamic agents")
         assets = robot_utils.list_dynamic_agent_assets(self._user)
         if not assets:
             raise RuntimeError(
@@ -492,9 +488,8 @@ class DynamicAgentsController:
         waypoint_ids = list(self._positions.keys())
         assets = robot_utils.list_dynamic_agent_assets(self._user)
 
-        spawn_ids = waypoint_ids[:]
-        self._rng.shuffle(spawn_ids)
-        spawn_ids = spawn_ids[: self._agent_count]
+        # Independent random picks — multiple agents may share a waypoint.
+        spawn_ids = [self._rng.choice(waypoint_ids) for _ in range(self._agent_count)]
 
         UsdGeom.Xform.Define(self._stage, _DYNAMIC_AGENTS_ROOT)
         solid_proto, ghost_proto = self._create_instancer_prototypes(assets)
