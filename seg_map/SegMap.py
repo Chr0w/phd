@@ -201,7 +201,7 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        self._selected_setup_name = "paper_test_1"
+        self._selected_setup_name = "paper_test_1" # "paper_test_1" 
         self._load_setup_from_yaml()
 
         self._previous_speed = 0.0

@@ -18,11 +18,17 @@ _MAX_ANGULAR_VELOCITY_RADPS = 2.5
 _YAW_ALIGN_GAIN = 2.0
 _WAYPOINT_ARRIVAL_M = 0.3
 _OVERLAP_MARGIN_M = 0.1
+# Vanish before the meshes meet, and stay gone until the agent has clearly passed.
+# A lidar origin inside any mesh returns every ray at ~0 and blanks the scan.
+_ROBOT_VANISH_MARGIN_M = 0.5
+_ROBOT_RETURN_MARGIN_M = 1.25
+# Published below the scan plane while hidden. Position writes are what RTX
+# lidar already tracks; proto-index swaps alone can leave the old mesh in place.
+_HIDDEN_AGENT_Z = -1000.0
 _DYNAMIC_AGENTS_ROOT = "/map/dynamic_agents"
 _DYNAMIC_AGENTS_INSTANCER = f"{_DYNAMIC_AGENTS_ROOT}/instancer"
 _DEFAULT_AGENT_RADIUS_M = 0.5
 _ROBOT_RADIUS_M = 0.5
-_COLLISION_CHECK_SUBSAMPLE = 8
 
 
 @dataclass(frozen=True)
@@ -40,8 +46,8 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     "no_changes": LayoutDevelopmentModeConfig(
         name="no_changes",
         runtime_minutes=20,
-        storage_utilization_start=0.0,
-        storage_utilization_target=0.0,
+        storage_utilization_start=100.0,
+        storage_utilization_target=100.0,
         event_period_seconds=0,
         event_random_actions=0,
     ),
@@ -89,11 +95,11 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     "paper_test_1": LayoutDevelopmentModeConfig(
         name="paper_test_1",
         runtime_minutes=15,
-        storage_utilization_start=20.0,
-        storage_utilization_target=80.0,
+        storage_utilization_start=0.2,
+        storage_utilization_target=0.8,
         event_period_seconds=10,
-        event_random_actions=50,
-        dynamic_agents=10,
+        event_random_actions=25,
+        dynamic_agents=8,
     ),
 }
 
@@ -419,7 +425,6 @@ class _DynamicAgentState:
     slot: int
     asset_path: str
     solid_proto: int
-    ghost_proto: int
     current_waypoint_id: str
     path: list[str]
     path_index: int
@@ -430,6 +435,7 @@ class _DynamicAgentState:
     previous_speed: float = 0.0
     previous_angular_velocity: float = 0.0
     collision_enabled: bool = True
+    robot_overlap: bool = False
 
 
 class DynamicAgentsController:
@@ -440,9 +446,12 @@ class DynamicAgentsController:
     solid prototypes give lidar returns close to the mesh shape. Per-frame
     cost is two array writes (positions + orientations) regardless of count.
 
-    Pass-through swaps to a ghost prototype of the same asset that stays
-    render-visible but is PhysX-collision-free and tagged ``clear_glass`` so
-    RTX lidar rays transmit instead of returning hits from inside the mesh.
+    While an agent overlaps the robot (or is the pass-through of an
+    agent-agent pair) its instance is switched to an empty prototype, marked
+    inactive, and published far below the scan plane. A lidar whose origin
+    sits inside a mesh — including a transmissive one — returns every ray at
+    zero range and blanks the scan. The agent contributes no returns until
+    it has cleared the robot.
     """
 
     def __init__(
@@ -462,15 +471,17 @@ class DynamicAgentsController:
         self._agents: list[_DynamicAgentState] = []
         self._pair_pass_through: dict[tuple[int, int], int] = {}
         self._spawned = False
-        self._tick = 0
         self._instancer_path = _DYNAMIC_AGENTS_INSTANCER
         self._instancer = None
         self._positions_attr = None
         self._orientations_attr = None
         self._proto_indices_attr = None
+        self._invisible_ids_attr = None
+        self._inactive_ids_attr = None
         self._gf_positions: list = []
         self._gf_orientations: list = []
         self._proto_indices: list[int] = []
+        self._hidden_ids: list[int] = []
         self._asset_radius: dict[str, float] = {}
         self._validate_spawn_requirements()
 
@@ -501,7 +512,7 @@ class DynamicAgentsController:
         spawn_ids = [self._rng.choice(waypoint_ids) for _ in range(self._agent_count)]
 
         UsdGeom.Xform.Define(self._stage, _DYNAMIC_AGENTS_ROOT)
-        solid_proto, ghost_proto = self._create_instancer_prototypes(assets)
+        solid_proto = self._create_instancer_prototypes(assets)
 
         self._agents = []
         self._gf_positions = []
@@ -515,7 +526,6 @@ class DynamicAgentsController:
                 slot=index,
                 asset_path=asset_path,
                 solid_proto=solid_proto[asset_path],
-                ghost_proto=ghost_proto[asset_path],
                 current_waypoint_id=waypoint_id,
                 path=[waypoint_id],
                 path_index=0,
@@ -530,6 +540,11 @@ class DynamicAgentsController:
             self._gf_orientations.append(isu._yaw_degrees_to_quat_h(0.0))
             self._proto_indices.append(agent.solid_proto)
 
+        self._instancer.CreateIdsAttr(list(range(len(self._agents))))
+        self._invisible_ids_attr = self._instancer.CreateInvisibleIdsAttr([])
+        create_inactive = getattr(self._instancer, "CreateInactiveIdsAttr", None)
+        self._inactive_ids_attr = create_inactive([]) if create_inactive else None
+
         self._positions_attr.Set(self._gf_positions)
         self._orientations_attr.Set(self._gf_orientations)
         self._proto_indices_attr.Set(self._proto_indices)
@@ -540,23 +555,21 @@ class DynamicAgentsController:
             + ", ".join(spawn_ids)
         )
 
-    def _create_instancer_prototypes(
-        self, assets: list[str]
-    ) -> tuple[dict[str, int], dict[str, int]]:
+    def _create_instancer_prototypes(self, assets: list[str]) -> dict[str, int]:
         """
-        Build solid (lidar collision) + ghost (visible, lidar-transmissive) prototypes.
+        Build an empty prototype plus one solid prototype per asset.
 
-        For each asset:
-          solid = convex-hull colliders for normal lidar returns
-          ghost = same visual, no PhysX collision, clear_glass non-visual tag
+        Index 0 is an empty xform (no mesh, no collider) used while an agent
+        must be absent from lidar. Solid prototypes keep convex-hull colliders
+        so normal returns follow the mesh shape.
         """
         prototypes_root = f"{self._instancer_path}/Prototypes"
         UsdGeom.Xform.Define(self._stage, prototypes_root)
 
         solid_proto: dict[str, int] = {}
-        ghost_proto: dict[str, int] = {}
-        proto_paths: list[str] = []
-        next_index = 0
+        empty_path = isu._ensure_empty_prototype(self._stage, prototypes_root)
+        proto_paths: list[str] = [empty_path]
+        next_index = 1
 
         for asset_path in assets:
             solid_path = f"{prototypes_root}/proto_{next_index:02d}"
@@ -568,14 +581,6 @@ class DynamicAgentsController:
             self._asset_radius[asset_path] = self._measure_xy_radius(solid_path)
             next_index += 1
 
-            ghost_path = f"{prototypes_root}/proto_{next_index:02d}"
-            isu.add_reference_to_stage(usd_path=asset_path, prim_path=ghost_path)
-            isu._strip_rigid_bodies_recursive(self._stage, ghost_path)
-            isu.mark_prototype_lidar_transmissive(self._stage, ghost_path)
-            ghost_proto[asset_path] = next_index
-            proto_paths.append(ghost_path)
-            next_index += 1
-
         self._instancer = UsdGeom.PointInstancer.Define(self._stage, self._instancer_path)
         self._instancer.CreatePrototypesRel().SetTargets(
             [Sdf.Path(path) for path in proto_paths]
@@ -583,18 +588,35 @@ class DynamicAgentsController:
         self._positions_attr = self._instancer.CreatePositionsAttr([])
         self._orientations_attr = self._instancer.CreateOrientationsAttr([])
         self._proto_indices_attr = self._instancer.CreateProtoIndicesAttr([])
-        return solid_proto, ghost_proto
+        return solid_proto
 
     def _measure_xy_radius(self, prim_path: str) -> float:
+        """XY radius of the whole prototype around the instance origin."""
         try:
-            obb = isu._prim_obb_components(self._stage, prim_path)
-            if obb is None:
+            prim = self._stage.GetPrimAtPath(prim_path)
+            if not prim or not prim.IsValid():
                 return _DEFAULT_AGENT_RADIUS_M
-            _center, _axes, half = obb
-            radius = float(math.hypot(half[0], half[1]))
+            purposes = [
+                UsdGeom.Tokens.default_,
+                UsdGeom.Tokens.render,
+                UsdGeom.Tokens.proxy,
+            ]
+            cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), purposes, useExtentsHint=True)
+            local_range = cache.ComputeLocalBound(prim).GetRange()
+            if local_range.IsEmpty():
+                return _DEFAULT_AGENT_RADIUS_M
+            pmin = local_range.GetMin()
+            pmax = local_range.GetMax()
+            max_r2 = 0.0
+            for x in (float(pmin[0]), float(pmax[0])):
+                for y in (float(pmin[1]), float(pmax[1])):
+                    r2 = x * x + y * y
+                    if r2 > max_r2:
+                        max_r2 = r2
+            radius = math.sqrt(max_r2)
             if radius < 1e-3:
                 return _DEFAULT_AGENT_RADIUS_M
-            return min(radius, 1.5)
+            return radius
         except Exception:
             return _DEFAULT_AGENT_RADIUS_M
 
@@ -608,24 +630,29 @@ class DynamicAgentsController:
         if not self._spawned or not self._agents:
             return
 
-        self._tick += 1
         for agent in self._agents:
             self._step_agent_motion(agent, step_size)
 
-        # One batched USD write for all agents.
+        if robot_xy is None and robot_xy_fn is not None:
+            robot_xy = robot_xy_fn()
+        # Decide visibility from the poses about to be published, every frame,
+        # so a solid mesh is never written into the lidar origin.
+        self._update_pass_through_collisions(robot_xy, robot_radius)
+
         with Sdf.ChangeBlock():
             for agent in self._agents:
-                self._gf_positions[agent.slot] = Gf.Vec3f(agent.x, agent.y, 0.0)
+                z = 0.0 if agent.collision_enabled else _HIDDEN_AGENT_Z
+                self._gf_positions[agent.slot] = Gf.Vec3f(agent.x, agent.y, z)
                 self._gf_orientations[agent.slot] = isu._yaw_degrees_to_quat_h(
                     math.degrees(agent.yaw)
                 )
             self._positions_attr.Set(self._gf_positions)
             self._orientations_attr.Set(self._gf_orientations)
-
-        if self._tick % _COLLISION_CHECK_SUBSAMPLE == 0:
-            if robot_xy is None and robot_xy_fn is not None:
-                robot_xy = robot_xy_fn()
-            self._update_pass_through_collisions(robot_xy, robot_radius)
+            self._proto_indices_attr.Set(self._proto_indices)
+            if self._invisible_ids_attr is not None:
+                self._invisible_ids_attr.Set(self._hidden_ids)
+            if self._inactive_ids_attr is not None:
+                self._inactive_ids_attr.Set(self._hidden_ids)
 
     def _assign_new_path(self, agent: _DynamicAgentState) -> None:
         candidates = [
@@ -755,30 +782,43 @@ class DynamicAgentsController:
             if pair not in active_pairs:
                 del self._pair_pass_through[pair]
 
-        if robot_xy is not None:
+        if robot_xy is None:
+            for agent in self._agents:
+                agent.robot_overlap = False
+        else:
             rx, ry = robot_xy
             for index, agent in enumerate(self._agents):
-                if self._circles_within_overlap_margin(
-                    agent.x, agent.y, agent.radius, rx, ry, robot_radius
-                ):
+                margin = (
+                    _ROBOT_RETURN_MARGIN_M
+                    if agent.robot_overlap
+                    else _ROBOT_VANISH_MARGIN_M
+                )
+                overlapping = self._circles_within_overlap_margin(
+                    agent.x,
+                    agent.y,
+                    agent.radius,
+                    rx,
+                    ry,
+                    robot_radius,
+                    margin,
+                )
+                agent.robot_overlap = overlapping
+                if overlapping:
                     should_disable[index] = True
 
-        proto_changed = False
+        hidden_ids: list[int] = []
         for index, agent in enumerate(self._agents):
             enabled = not should_disable[index]
-            if agent.collision_enabled == enabled:
-                continue
             agent.collision_enabled = enabled
-            # Ghost stays render-visible; clear_glass non-visual + no PhysX
-            # collider lets RTX lidar transmit instead of returning interior hits.
+            # Empty prototype has no mesh and no collider, so lidar cannot
+            # return it — including the case where the sensor would have
+            # been inside the solid mesh.
             self._proto_indices[agent.slot] = (
-                agent.solid_proto if enabled else agent.ghost_proto
+                agent.solid_proto if enabled else isu.EMPTY_PROTO_INDEX
             )
-            proto_changed = True
-
-        if proto_changed:
-            with Sdf.ChangeBlock():
-                self._proto_indices_attr.Set(self._proto_indices)
+            if not enabled:
+                hidden_ids.append(agent.slot)
+        self._hidden_ids = hidden_ids
 
 
 class LayoutDevelopmentController:
