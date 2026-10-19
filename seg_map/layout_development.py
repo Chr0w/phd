@@ -86,6 +86,15 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
         event_random_actions=0,
         dynamic_agents=100,
     ),
+    "paper_test_1": LayoutDevelopmentModeConfig(
+        name="paper_test_1",
+        runtime_minutes=15,
+        storage_utilization_start=20.0,
+        storage_utilization_target=80.0,
+        event_period_seconds=10,
+        event_random_actions=50,
+        dynamic_agents=10,
+    ),
 }
 
 
