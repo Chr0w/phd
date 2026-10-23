@@ -40,6 +40,11 @@ class LayoutDevelopmentModeConfig:
     event_period_seconds: float
     event_random_actions: int
     dynamic_agents: int = 0
+    # Cosine pulse between low and high. One half period is low-to-high.
+    # None keeps the open-loop drift from start toward target.
+    storage_pulse_low: Optional[float] = None
+    storage_pulse_high: Optional[float] = None
+    storage_pulse_half_period_minutes: Optional[float] = None
 
 
 MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
@@ -94,12 +99,25 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
     ),
     "paper_test_1": LayoutDevelopmentModeConfig(
         name="paper_test_1",
-        runtime_minutes=15,
-        storage_utilization_start=0.2,
-        storage_utilization_target=0.8,
-        event_period_seconds=10,
-        event_random_actions=25,
-        dynamic_agents=8,
+        runtime_minutes=10080,  # 7 days
+        # Cosine starts at the trough. Peaks at 85% after 3 hours, back at 15% after 6.
+        storage_utilization_start=0.15,
+        storage_utilization_target=0.85,
+        event_period_seconds=5,
+        event_random_actions=50,
+        dynamic_agents=10,
+        storage_pulse_low=0.15,
+        storage_pulse_high=0.85,
+        storage_pulse_half_period_minutes=180.0,
+    ),
+    "test_degeneracy": LayoutDevelopmentModeConfig(
+        name="test_degeneracy",
+        runtime_minutes=1,
+        storage_utilization_start=1.0,
+        storage_utilization_target=1.0,
+        event_period_seconds=0,
+        event_random_actions=0,
+        dynamic_agents=0,
     ),
 }
 
@@ -125,6 +143,34 @@ def compute_storage_utilization(occupied: int, total: int) -> float:
     if total <= 0:
         return 0.0
     return max(0.0, min(1.0, float(occupied) / float(total)))
+
+
+def storage_pulse_enabled(config: LayoutDevelopmentModeConfig) -> bool:
+    return (
+        config.storage_pulse_low is not None
+        and config.storage_pulse_high is not None
+        and config.storage_pulse_half_period_minutes is not None
+        and config.storage_pulse_half_period_minutes > 0.0
+    )
+
+
+def scheduled_storage_utilization(
+    elapsed_minutes: float, config: LayoutDevelopmentModeConfig
+) -> float:
+    """Cosine from pulse low to pulse high and back.
+
+    Elapsed time 0 is the low. The high is reached at each half period, and
+    the low again at each full period (twice the half period).
+    """
+    low = float(config.storage_pulse_low)
+    high = float(config.storage_pulse_high)
+    half = float(config.storage_pulse_half_period_minutes)
+    period = 2.0 * half
+    midpoint = 0.5 * (low + high)
+    amplitude = 0.5 * (high - low)
+    angle = 2.0 * math.pi * (elapsed_minutes / period)
+    value = midpoint - amplitude * math.cos(angle)
+    return max(0.0, min(1.0, value))
 
 
 @dataclass(frozen=True)
@@ -872,6 +918,15 @@ class LayoutDevelopmentController:
     def storage_utilization(self) -> float:
         return self._asset_manager.storage_utilization()
 
+    def asset_utilization_level(self, sim_time: float) -> float:
+        """Scheduled utilization. Cosine pulse when configured, otherwise occupancy."""
+        if not storage_pulse_enabled(self._config):
+            return self.storage_utilization
+        elapsed_minutes = 0.0
+        if self._start_sim_time is not None:
+            elapsed_minutes = max(0.0, (sim_time - self._start_sim_time) / 60.0)
+        return scheduled_storage_utilization(elapsed_minutes, self._config)
+
     @property
     def total_bins(self) -> int:
         return self._asset_manager.total_bins
@@ -900,11 +955,21 @@ class LayoutDevelopmentController:
         initial_keys = set(all_keys[:initial_count])
         spawned = self._asset_manager.set_occupied_bins(initial_keys)
 
-        print(
-            f"Layout development mode '{self._config.name}' started: "
-            f"{spawned}/{self.total_bins} bins occupied "
-            f"(SU={self.storage_utilization:.3f}, target={self._config.storage_utilization_target})"
-        )
+        if storage_pulse_enabled(self._config):
+            half_hours = self._config.storage_pulse_half_period_minutes / 60.0
+            print(
+                f"Layout development mode '{self._config.name}' started: "
+                f"{spawned}/{self.total_bins} bins occupied "
+                f"(SU={self.storage_utilization:.3f}, "
+                f"cosine {self._config.storage_pulse_low:.0%}–"
+                f"{self._config.storage_pulse_high:.0%} every {half_hours:g} h)"
+            )
+        else:
+            print(
+                f"Layout development mode '{self._config.name}' started: "
+                f"{spawned}/{self.total_bins} bins occupied "
+                f"(SU={self.storage_utilization:.3f}, target={self._config.storage_utilization_target})"
+            )
 
         if self._dynamic_agents is not None:
             self._dynamic_agents.spawn()
@@ -979,9 +1044,13 @@ class LayoutDevelopmentController:
             return
 
         self._last_event_time = sim_time
-        self._run_event()
+        self._run_event(sim_time)
 
-    def _run_event(self) -> None:
+    def _run_event(self, sim_time: float) -> None:
+        if storage_pulse_enabled(self._config):
+            self._run_pulse_event(sim_time)
+            return
+
         tracking_count = self._next_tracking_action_count()
         net_delta = self._config.storage_utilization_target - self._config.storage_utilization_start
 
@@ -992,6 +1061,27 @@ class LayoutDevelopmentController:
             for _ in range(tracking_count):
                 self._try_remove_random_bin()
 
+        self._apply_random_actions()
+
+    def _run_pulse_event(self, sim_time: float) -> None:
+        """Churn bins, then pull occupancy onto the cosine schedule."""
+        self._apply_random_actions()
+        elapsed_minutes = 0.0
+        if self._start_sim_time is not None:
+            elapsed_minutes = max(0.0, (sim_time - self._start_sim_time) / 60.0)
+        target = scheduled_storage_utilization(elapsed_minutes, self._config)
+        target_count = int(round(target * self.total_bins))
+        delta = target_count - self.occupied_count
+        if delta > 0:
+            for _ in range(delta):
+                if not self._try_add_random_bin():
+                    break
+        elif delta < 0:
+            for _ in range(-delta):
+                if not self._try_remove_random_bin():
+                    break
+
+    def _apply_random_actions(self) -> None:
         for _ in range(self._config.event_random_actions):
             if self._rng.random() < 0.5:
                 self._try_add_random_bin(max_attempts=5)

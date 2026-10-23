@@ -142,7 +142,7 @@ def layout_waypoint_entries(layout: dict) -> list[tuple[str, float, float]]:
     return [(waypoint_id, x, y) for waypoint_id, x, y, _sort_key in entries]
 
 
-NUM_WAYPOINT_PLANS = 300
+NUM_WAYPOINT_PLANS = 1000
 DEFAULT_START_WAYPOINT_ID = "waypoint_1"
 
 

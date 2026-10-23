@@ -212,6 +212,7 @@ class SegMap(BaseSample):
         self._layout_config = {}
         self._waypoint_plans = []
         self._plan_count = 0
+        self._plan_cycle = 0
         self._last_printed_plan_number = None
         self._sim_step_callback_subscription = None
         self._missions_started = False
@@ -228,6 +229,10 @@ class SegMap(BaseSample):
         self._section_bin_marker_paths: Dict[str, list[str]] = {}
         # ROS2 publisher wrapper
         self._storage_utilization_pub = ros2_utils.StorageUtilizationPublisher()
+        self._asset_utilization_pub = ros2_utils.StorageUtilizationPublisher(
+            topic_name='/sim_asset_utilization_level',
+            node_name='seg_map_asset_utilization_publisher',
+        )
         self._sim_progress_pub = ros2_utils.SimProgressPublisher()
         self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
         self._teleop_warned_unavailable = False
@@ -250,6 +255,13 @@ class SegMap(BaseSample):
             self._layout_dev.total_bins,
         )
         self._storage_utilization_pub.publish_ratio(ratio)
+
+    def _publish_asset_utilization_level(self, sim_time: float):
+        """Publish the scheduled utilization level as a Float32."""
+        if not self._layout_dev:
+            return
+        level = self._layout_dev.asset_utilization_level(sim_time)
+        self._asset_utilization_pub.publish_ratio(level)
 
     def _publish_sim_progress(self, sim_time: float):
         """Publish test progress (total time, percent complete, minutes passed/left)."""
@@ -509,6 +521,7 @@ class SegMap(BaseSample):
         self._misisons, self._current_mission_number, self._all_missions_completed, self._new_mission = (
             robot_utils.setup_missions_from_plans(self._waypoint_plans, positions)
         )
+        self._plan_cycle = 1
         self._last_printed_plan_number = None
 
     def _position_robot_asset(self):
@@ -710,8 +723,66 @@ class SegMap(BaseSample):
     def step_pause(self, mission, time):
         print(f"On pause...")
 
+    def _return_plan_to_start(self) -> Optional[dict]:
+        """Shortest path from the end of the last plan back to the first plan's start."""
+        plans = self._waypoint_plans
+        if not plans:
+            return None
+        end_id = str(plans[-1]["path"][-1])
+        start_id = str(plans[0]["start"])
+        if end_id == start_id:
+            return None
+        graph = robot_utils.build_waypoint_graph(self._layout_config)
+        path = robot_utils.shortest_waypoint_path(graph, end_id, start_id)
+        if not path or len(path) < 2:
+            print(
+                f"No waypoint path from {end_id} back to {start_id}; "
+                "repeating plans from the current pose"
+            )
+            return None
+        return {
+            "plan": 0,
+            "start": end_id,
+            "target": start_id,
+            "path": path,
+        }
+
+    def _repeat_waypoint_plans(self) -> None:
+        """Replay the same plans. Layout runtime is what stops the simulation."""
+        if not self._waypoint_plans:
+            return
+
+        self._plan_cycle += 1
+        plans = list(self._waypoint_plans)
+        return_plan = self._return_plan_to_start()
+        if return_plan is not None:
+            plans = [return_plan, *plans]
+            print(
+                f"Waypoint plans finished — repeating cycle {self._plan_cycle} "
+                f"via {' -> '.join(return_plan['path'])}"
+            )
+        else:
+            print(f"Waypoint plans finished — repeating cycle {self._plan_cycle}")
+
+        positions = robot_utils.layout_waypoint_positions(self._layout_config)
+        (
+            self._misisons,
+            self._current_mission_number,
+            self._all_missions_completed,
+            self._new_mission,
+        ) = robot_utils.setup_missions_from_plans(plans, positions)
+        # The return leg is logged above. Skip a second "plan 0" banner.
+        self._last_printed_plan_number = 0 if return_plan is not None else None
+
     def step_mission(self, time):
         #return
+        if not self._misisons:
+            return
+
+        if self._current_mission_number >= len(self._misisons):
+            self._repeat_waypoint_plans()
+            return
+
         if self._new_mission:
             mission = self._misisons[self._current_mission_number]
             self._maybe_print_plan_start(mission)
@@ -722,13 +793,6 @@ class SegMap(BaseSample):
             )
             self._new_mission = False
 
-        # Check if we have completed all missions
-        if self._current_mission_number >= len(self._misisons):
-            if not self._all_missions_completed:
-                print(f"All missions completed - stopping mission execution")
-                self._all_missions_completed = True
-            return
-        
         misssion = self._misisons[self._current_mission_number]
         if misssion.get_status() != StatusType.IN_PROGRESS:
             print(f"Error: Mission nr. {self._current_mission_number} is not in progress")
@@ -750,8 +814,7 @@ class SegMap(BaseSample):
             if self._current_mission_number < len(self._misisons):
                 self._misisons[self._current_mission_number].set_status(StatusType.IN_PROGRESS)
             else:
-                print(f"All missions completed - stopping simulation.")
-                self._stop_simulation()
+                self._repeat_waypoint_plans()
                 return
         if misssion.get_status() == StatusType.FAILED:
             self.stop_motion()
@@ -782,6 +845,7 @@ class SegMap(BaseSample):
         if int(time) != int(self.previous_time_):
             print(f"Simulation time: {time:.2f}s")
             self._publish_storage_utilization()
+            self._publish_asset_utilization_level(time)
             self._publish_sim_progress(time)
 
         if self._layout_dev:
@@ -846,6 +910,7 @@ class SegMap(BaseSample):
         self._misisons = []
         self._current_mission_number = 0
         self._all_missions_completed = False
+        self._plan_cycle = 0
         self._layout_dev_started = False
         self._layout_instancers_prewarmed = False
         self._layout_prewarm_active = False

@@ -134,7 +134,19 @@ def get_all_setups(user: str = None):
             layout_development_mode="paper_test_1",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=False,
-            start_delay_seconds=0,
+            start_delay_seconds=1.0,
+        ),
+        Setup(
+            name="test_degeneracy",
+            user=user,
+            mission_file_path=f"/home/{user}/isaac_sim_files/robots/{mir_bot}/{mir_bot}.usd",
+            map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
+            seed_nr=1,
+            robot_prim_name=mir_bot,
+            layout_development_mode="test_degeneracy",
+            only_plan_anchor_waypoints=False,
+            run_waypoints_in_order=True,
+            start_delay_seconds=1,
         ),
     ]
     

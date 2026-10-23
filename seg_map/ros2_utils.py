@@ -16,10 +16,14 @@ def is_available() -> bool:
 
 class StorageUtilizationPublisher:
 	"""
-	Small wrapper around a ROS2 publisher for the /storage_utilization topic.
+	Small wrapper around a ROS2 publisher for a Float32 utilization topic.
 	Safe to construct even if ROS2 is unavailable; methods will no-op.
 	"""
-	def __init__(self) -> None:
+	def __init__(
+		self,
+		topic_name: str = '/storage_utilization',
+		node_name: str = 'seg_map_storage_utilization_publisher',
+	) -> None:
 		self._node: _t.Optional["Node"] = None
 		self._publisher = None
 		self._ok = False
@@ -28,8 +32,8 @@ class StorageUtilizationPublisher:
 		try:
 			if not rclpy.ok():  # type: ignore[name-defined]
 				rclpy.init()
-			self._node = Node('seg_map_storage_utilization_publisher')  # type: ignore[name-defined]
-			self._publisher = self._node.create_publisher(Float32, '/storage_utilization', 10)  # type: ignore[name-defined]
+			self._node = Node(node_name)  # type: ignore[name-defined]
+			self._publisher = self._node.create_publisher(Float32, topic_name, 10)  # type: ignore[name-defined]
 			self._ok = True
 		except Exception:
 			self._node = None
