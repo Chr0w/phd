@@ -20,8 +20,8 @@ _WAYPOINT_ARRIVAL_M = 0.3
 _OVERLAP_MARGIN_M = 0.1
 # Vanish before the meshes meet, and stay gone until the agent has clearly passed.
 # A lidar origin inside any mesh returns every ray at ~0 and blanks the scan.
-_ROBOT_VANISH_MARGIN_M = 0.5
-_ROBOT_RETURN_MARGIN_M = 1.25
+_ROBOT_VANISH_MARGIN_M = 1.0
+_ROBOT_RETURN_MARGIN_M = 1.5
 # Published below the scan plane while hidden. Position writes are what RTX
 # lidar already tracks; proto-index swaps alone can leave the old mesh in place.
 _HIDDEN_AGENT_Z = -1000.0
