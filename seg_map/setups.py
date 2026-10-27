@@ -129,6 +129,21 @@ def get_all_setups(user: str = None):
     mir_bot = "mir_bot_4"
     setups = [
         Setup(
+            name="warehouse",
+            user=user,
+            mission_file_path=f"/home/{user}/isaac_sim_files/robots/{mir_bot}/{mir_bot}.usd",
+            map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
+            seed_nr=1,
+            robot_prim_name=mir_bot,
+            only_plan_anchor_waypoints=False,
+            run_waypoints_in_order=True,
+            runtime_minutes=10,
+            storage_utilization_start=0.0,
+            storage_utilization_target=0.0,
+            event_period_seconds=0,
+            event_random_actions=0,
+        ),
+        Setup(
             name="slam_mapping",
             user=user,
             mission_file_path=f"/home/{user}/isaac_sim_files/robots/{mir_bot}/{mir_bot}.usd",

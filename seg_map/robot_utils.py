@@ -69,27 +69,62 @@ _SYSTEM_LAUNCH_FIELDS = (
 )
 
 
+_SYSTEM_SETUP_FIELDS = (
+    "setup",
+    "map_yaml",
+    "robot_start_x",
+    "robot_start_y",
+    "robot_start_yaw_deg",
+)
+
+
 def _eval_launch_assignment(node: ast.AST, values: dict[str, object]):
-    """Evaluate a module-level literal, or an f-string of already assigned names."""
+    """Evaluate a module-level literal, f-string, name, attribute, or SystemSetup call."""
     try:
         return ast.literal_eval(node)
     except (ValueError, SyntaxError):
         pass
-    if not isinstance(node, ast.JoinedStr):
+    if isinstance(node, ast.Name):
+        return values.get(node.id)
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+        owner = values.get(node.value.id)
+        if isinstance(owner, dict):
+            return owner.get(node.attr)
         return None
-    parts: list[str] = []
-    for part in node.values:
-        if isinstance(part, ast.Constant) and isinstance(part.value, str):
-            parts.append(part.value)
-            continue
-        if isinstance(part, ast.FormattedValue) and isinstance(part.value, ast.Name):
-            name = part.value.id
-            if name not in values:
+    if isinstance(node, ast.JoinedStr):
+        parts: list[str] = []
+        for part in node.values:
+            if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                parts.append(part.value)
+                continue
+            if isinstance(part, ast.FormattedValue):
+                value = _eval_launch_assignment(part.value, values)
+                if value is None:
+                    return None
+                parts.append(str(value))
+                continue
+            return None
+        return "".join(parts)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "SystemSetup":
+        fields: dict[str, object] = {}
+        if len(node.args) > len(_SYSTEM_SETUP_FIELDS):
+            return None
+        for field_name, arg in zip(_SYSTEM_SETUP_FIELDS, node.args):
+            value = _eval_launch_assignment(arg, values)
+            if value is None:
                 return None
-            parts.append(str(values[name]))
-            continue
-        return None
-    return "".join(parts)
+            fields[field_name] = value
+        for keyword in node.keywords:
+            if keyword.arg is None:
+                return None
+            value = _eval_launch_assignment(keyword.value, values)
+            if value is None:
+                return None
+            fields[keyword.arg] = value
+        if any(name not in fields for name in _SYSTEM_SETUP_FIELDS):
+            return None
+        return fields
+    return None
 
 
 def system_launch_path(user: str | None = None) -> str:
@@ -102,8 +137,8 @@ def read_system_launch_config(launch_path: str | None = None) -> tuple[list[floa
     """Read the robot start pose, layout filename, and setup name from system_launch.py.
 
     The launch file imports ROS, so the assignments are parsed instead of executed.
-    Later assignments of the same name win. F-strings may reference earlier assignments,
-    such as USED_LAYOUT = f'{SETUP}.yaml'.
+    Later assignments of the same name win. Values may be literals, f-strings of earlier
+    names, or attributes of a SystemSetup(...) instance, such as SETUP = warehouse_setup.setup.
 
     Returns:
         tuple: ([x, y, yaw_degrees], layout filename, setup name)
@@ -121,7 +156,7 @@ def read_system_launch_config(launch_path: str | None = None) -> tuple[list[floa
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
         target = node.targets[0]
-        if not isinstance(target, ast.Name) or target.id not in _SYSTEM_LAUNCH_FIELDS:
+        if not isinstance(target, ast.Name):
             continue
         value = _eval_launch_assignment(node.value, values)
         if value is None:
