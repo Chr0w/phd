@@ -22,7 +22,7 @@ import isaac_sim_utils as isu
 import robot_utils
 from setups import get_setup_from_name
 import ros2_utils
-from layout_development import LayoutDevelopmentController, BinAssetManager, get_mode_config
+from layout_development import LayoutDevelopmentController, BinAssetManager
 from mission import MissionType, StatusType
 
 import numpy as np
@@ -92,7 +92,7 @@ class SegMap(BaseSample):
         self.previous_time_ = SimulationManager.get_simulation_time()
         self._mission_arm_time = self.previous_time_
         self._start_delay_elapsed_logged = False
-        delay = float(self.Setup.start_delay_seconds or 0.0)
+        delay = float(self.Setup.start_delay_seconds)
         if delay > 0.0:
             print(f"Robot motion delayed for {delay:.1f}s after start")
         self._start_layout_development(self.previous_time_)
@@ -106,14 +106,14 @@ class SegMap(BaseSample):
         self.previous_time_ = time
         self._mission_arm_time = time
         self._start_delay_elapsed_logged = False
-        delay = float(self.Setup.start_delay_seconds or 0.0)
+        delay = float(self.Setup.start_delay_seconds)
         if delay > 0.0:
             print(f"Robot motion delayed for {delay:.1f}s after start")
         self._start_layout_development(time)
         print("Mission loop armed from timeline play")
 
     def _robot_motion_allowed(self, time: float) -> bool:
-        delay = float(self.Setup.start_delay_seconds or 0.0)
+        delay = float(self.Setup.start_delay_seconds)
         if delay <= 0.0:
             return True
         if self._mission_arm_time is None:
@@ -327,11 +327,10 @@ class SegMap(BaseSample):
         return self._layout_config
 
     def _init_layout_development(self):
-        mode_name = self.Setup.layout_development_mode
-        if not mode_name:
+        config = self.Setup.layout_development
+        if config is None:
             self._layout_dev = None
             return
-        config = get_mode_config(mode_name)
         self._layout_dev = LayoutDevelopmentController(
             self._stage,
             self._layout_config,
@@ -874,7 +873,7 @@ class SegMap(BaseSample):
             self._step_manual_control()
         elif self._robot_motion_allowed(time):
             if not self._start_delay_elapsed_logged:
-                delay = float(self.Setup.start_delay_seconds or 0.0)
+                delay = float(self.Setup.start_delay_seconds)
                 if delay > 0.0:
                     print(f"Start delay complete ({delay:.1f}s) — robot motion enabled")
                 self._start_delay_elapsed_logged = True

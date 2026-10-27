@@ -8,6 +8,7 @@ from typing import Optional
 import isaac_sim_utils as isu
 import robot_utils
 from pxr import Gf, UsdGeom, Sdf
+from setups import LayoutDevelopmentModeConfig
 
 
 # Match SegMap robot motion so agents travel the same way.
@@ -29,114 +30,6 @@ _DYNAMIC_AGENTS_ROOT = "/map/dynamic_agents"
 _DYNAMIC_AGENTS_INSTANCER = f"{_DYNAMIC_AGENTS_ROOT}/instancer"
 _DEFAULT_AGENT_RADIUS_M = 0.5
 _ROBOT_RADIUS_M = 0.5
-
-
-@dataclass(frozen=True)
-class LayoutDevelopmentModeConfig:
-    name: str
-    runtime_minutes: float
-    storage_utilization_start: float
-    storage_utilization_target: float
-    event_period_seconds: float
-    event_random_actions: int
-    dynamic_agents: int = 0
-    # Cosine pulse between low and high. One half period is low-to-high.
-    # None keeps the open-loop drift from start toward target.
-    storage_pulse_low: Optional[float] = None
-    storage_pulse_high: Optional[float] = None
-    storage_pulse_half_period_minutes: Optional[float] = None
-
-
-MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
-    "no_changes": LayoutDevelopmentModeConfig(
-        name="no_changes",
-        runtime_minutes=20,
-        storage_utilization_start=100.0,
-        storage_utilization_target=100.0,
-        event_period_seconds=0,
-        event_random_actions=0,
-    ),
-    "fill_up": LayoutDevelopmentModeConfig(
-        name="fill_up",
-        runtime_minutes=15,
-        storage_utilization_start=0.0,
-        storage_utilization_target=0.8,
-        event_period_seconds=10,
-        event_random_actions=5,
-    ),
-    "overnight_changes": LayoutDevelopmentModeConfig(
-        name="overnight_changes",
-        runtime_minutes=5,
-        storage_utilization_start=0.5,
-        storage_utilization_target=0.5,
-        event_period_seconds=0,
-        event_random_actions=0,
-    ),
-    "random_changes_only": LayoutDevelopmentModeConfig(
-        name="random_changes_only",
-        runtime_minutes=15,
-        storage_utilization_start=0.4,
-        storage_utilization_target=0.4,
-        event_period_seconds=5,
-        event_random_actions=20,
-    ),
-    "test_reach": LayoutDevelopmentModeConfig(
-        name="test_reach",
-        runtime_minutes=30,
-        storage_utilization_start=0.75,
-        storage_utilization_target=0.75,
-        event_period_seconds=0,
-        event_random_actions=0,
-    ),
-    "test_dynamics": LayoutDevelopmentModeConfig(
-        name="test_dynamics",
-        runtime_minutes=15,
-        storage_utilization_start=0.0,
-        storage_utilization_target=0.0,
-        event_period_seconds=0,
-        event_random_actions=0,
-        dynamic_agents=100,
-    ),
-    "paper_test_1": LayoutDevelopmentModeConfig(
-        name="paper_test_1",
-        runtime_minutes=10080,  # 7 days
-        # Cosine starts at the trough. Peaks at 85% after 3 hours, back at 15% after 6.
-        storage_utilization_start=0.15,
-        storage_utilization_target=0.85,
-        event_period_seconds=5,
-        event_random_actions=50,
-        dynamic_agents=10,
-        storage_pulse_low=0.15,
-        storage_pulse_high=0.85,
-        storage_pulse_half_period_minutes=180.0,
-    ),
-    "test_degeneracy": LayoutDevelopmentModeConfig(
-        name="test_degeneracy",
-        runtime_minutes=1,
-        storage_utilization_start=1.0,
-        storage_utilization_target=1.0,
-        event_period_seconds=0,
-        event_random_actions=0,
-        dynamic_agents=0,
-    ),
-    "baseline": LayoutDevelopmentModeConfig(
-        name="baseline",
-        runtime_minutes=10,
-        storage_utilization_start=0.5,
-        storage_utilization_target=0.5,
-        event_period_seconds=0,
-        event_random_actions=0,
-    ),
-}
-
-
-def get_mode_config(mode_name: str) -> LayoutDevelopmentModeConfig:
-    if mode_name not in MODE_REGISTRY:
-        raise ValueError(
-            f"Unknown layout development mode '{mode_name}'. "
-            f"Available modes: {', '.join(sorted(MODE_REGISTRY))}"
-        )
-    return MODE_REGISTRY[mode_name]
 
 
 def compute_actions_per_event(total_bins: int, config: LayoutDevelopmentModeConfig) -> float:

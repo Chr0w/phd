@@ -1,8 +1,27 @@
 import os
 import random
+from dataclasses import dataclass
+from typing import Optional
+
+DEFAULT_START_DELAY_SECONDS = 1.0
+
+@dataclass(frozen=True)
+class LayoutDevelopmentModeConfig:
+    name: str
+    runtime_minutes: float
+    storage_utilization_start: float
+    storage_utilization_target: float
+    event_period_seconds: float
+    event_random_actions: int
+    dynamic_agents: int = 0
+    # Cosine pulse between low and high. One half period is low-to-high.
+    # None keeps the open-loop drift from start toward target.
+    storage_pulse_low: Optional[float] = None
+    storage_pulse_high: Optional[float] = None
+    storage_pulse_half_period_minutes: Optional[float] = None
 
 class Setup():
-    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None, layout_development_mode: str = None, only_plan_anchor_waypoints: bool = False, run_waypoints_in_order: bool = False, start_delay_seconds: float = 0.0) -> None:
+    def __init__(self, name: str, user: str, mission_file_path: str, map_usd_path: str = None, seed_nr: int = 1, robot_prim_name: str = "mir_bot_3", start_position: list = None, only_plan_anchor_waypoints: bool = False, run_waypoints_in_order: bool = False, start_delay_seconds_override: float = None, runtime_minutes: float = 0.0, storage_utilization_start: float = 0.0, storage_utilization_target: float = 0.0, event_period_seconds: float = 0.0, event_random_actions: int = 0, dynamic_agents: int = 0, storage_pulse_low: float = None, storage_pulse_high: float = None, storage_pulse_half_period_minutes: float = None) -> None:
         self._name = name
         self._user = user
         self._mission_file = mission_file_path
@@ -10,10 +29,21 @@ class Setup():
         self._seed_nr = seed_nr
         self._robot_prim_name = robot_prim_name
         self._start_position = start_position
-        self._layout_development_mode = layout_development_mode
         self._only_plan_anchor_waypoints = only_plan_anchor_waypoints
         self._run_waypoints_in_order = run_waypoints_in_order
-        self._start_delay_seconds = start_delay_seconds
+        self._start_delay_seconds_override = start_delay_seconds_override
+        self._layout_development = LayoutDevelopmentModeConfig(
+            name=name,
+            runtime_minutes=runtime_minutes,
+            storage_utilization_start=storage_utilization_start,
+            storage_utilization_target=storage_utilization_target,
+            event_period_seconds=event_period_seconds,
+            event_random_actions=event_random_actions,
+            dynamic_agents=dynamic_agents,
+            storage_pulse_low=storage_pulse_low,
+            storage_pulse_high=storage_pulse_high,
+            storage_pulse_half_period_minutes=storage_pulse_half_period_minutes,
+        )
     @property
     def name(self):
         return self._name
@@ -43,8 +73,8 @@ class Setup():
         return self._start_position
 
     @property
-    def layout_development_mode(self):
-        return self._layout_development_mode
+    def layout_development(self):
+        return self._layout_development
 
     @property
     def only_plan_anchor_waypoints(self):
@@ -55,8 +85,14 @@ class Setup():
         return self._run_waypoints_in_order
 
     @property
+    def start_delay_seconds_override(self):
+        return self._start_delay_seconds_override
+
+    @property
     def start_delay_seconds(self):
-        return self._start_delay_seconds
+        if self._start_delay_seconds_override is None:
+            return DEFAULT_START_DELAY_SECONDS
+        return float(self._start_delay_seconds_override)
 
     def set_seed_nr(self, seed_nr: int):
         self._seed_nr = seed_nr
@@ -83,10 +119,13 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="no_changes",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
-            start_delay_seconds=0,
+            runtime_minutes=20,
+            storage_utilization_start=100.0,
+            storage_utilization_target=100.0,
+            event_period_seconds=0,
+            event_random_actions=0,
         ),
         Setup(
             name="setup_1",
@@ -95,10 +134,13 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="fill_up",
             only_plan_anchor_waypoints=True,
             run_waypoints_in_order=False,
-            start_delay_seconds=0,
+            runtime_minutes=15,
+            storage_utilization_start=0.0,
+            storage_utilization_target=0.8,
+            event_period_seconds=10,
+            event_random_actions=5,
         ),
         Setup(
             name="test_reach",
@@ -107,10 +149,14 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/test_reach/test_reach.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="test_reach",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
-            start_delay_seconds=5,
+            start_delay_seconds_override=5,
+            runtime_minutes=30,
+            storage_utilization_start=0.75,
+            storage_utilization_target=0.75,
+            event_period_seconds=0,
+            event_random_actions=0,
         ),
         Setup(
             name="test_dynamics",
@@ -119,10 +165,14 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="test_dynamics",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=False,
-            start_delay_seconds=0,
+            runtime_minutes=15,
+            storage_utilization_start=0.0,
+            storage_utilization_target=0.0,
+            event_period_seconds=0,
+            event_random_actions=0,
+            dynamic_agents=100,
         ),
         Setup(
             name="paper_test_1",
@@ -131,10 +181,18 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="paper_test_1",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=False,
-            start_delay_seconds=1.0,
+            runtime_minutes=10080,  # 7 days
+            # Cosine starts at the trough. Peaks at 85% after 3 hours, back at 15% after 6.
+            storage_utilization_start=0.15,
+            storage_utilization_target=0.85,
+            event_period_seconds=5,
+            event_random_actions=50,
+            dynamic_agents=10,
+            storage_pulse_low=0.15,
+            storage_pulse_high=0.85,
+            storage_pulse_half_period_minutes=180.0,
         ),
         Setup(
             name="test_degeneracy",
@@ -143,10 +201,13 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="test_degeneracy",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
-            start_delay_seconds=1,
+            runtime_minutes=1,
+            storage_utilization_start=1.0,
+            storage_utilization_target=1.0,
+            event_period_seconds=0,
+            event_random_actions=0,
         ),
         Setup(
             name="baseline",
@@ -155,10 +216,13 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_development_mode="baseline",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
-            start_delay_seconds=1,
+            runtime_minutes=10,
+            storage_utilization_start=0.5,
+            storage_utilization_target=0.5,
+            event_period_seconds=0,
+            event_random_actions=0,
         ),        
     ]
     
