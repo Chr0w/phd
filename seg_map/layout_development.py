@@ -119,6 +119,14 @@ MODE_REGISTRY: dict[str, LayoutDevelopmentModeConfig] = {
         event_random_actions=0,
         dynamic_agents=0,
     ),
+    "baseline": LayoutDevelopmentModeConfig(
+        name="baseline",
+        runtime_minutes=10,
+        storage_utilization_start=0.5,
+        storage_utilization_target=0.5,
+        event_period_seconds=0,
+        event_random_actions=0,
+    ),
 }
 
 
