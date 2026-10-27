@@ -201,7 +201,7 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        self._selected_setup_name = "paper_test_1" # "paper_test_1" 
+        self._selected_setup_name = "test_degeneracy" # "paper_test_1" 
         self._load_setup_from_yaml()
 
         self._previous_speed = 0.0
@@ -319,8 +319,7 @@ class SegMap(BaseSample):
                 collision_api.GetPrim().RemoveAPI(UsdPhysics.CollisionAPI)
 
     def _layout_yaml_path(self):
-        user = os.environ.get("USER", self.Setup.user)
-        return f"/home/{user}/devcontainer/ros2_ws/shared_files/layout.yaml"
+        return self.Setup.layout_path
 
     def _load_layout_config(self):
         self._layout_config = robot_utils.load_layout_config(self._layout_yaml_path())
