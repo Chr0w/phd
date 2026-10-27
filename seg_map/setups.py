@@ -4,8 +4,13 @@ from dataclasses import dataclass
 from typing import Optional
 
 DEFAULT_START_DELAY_SECONDS = 1.0
-LAYOUTS_DIR = "/home/devuser/ros2_ws/shared_files/layouts"
 DEFAULT_LAYOUT_NAME = "paper_test.yaml"
+
+
+def layouts_dir(user: str | None = None) -> str:
+    if not user:
+        user = os.environ.get("USER", "unknown")
+    return f"/home/{user}/devcontainer/ros2_ws/shared_files/layouts"
 
 @dataclass(frozen=True)
 class LayoutDevelopmentModeConfig:
@@ -69,7 +74,7 @@ class Setup():
 
     @property
     def layout_path(self):
-        return os.path.join(LAYOUTS_DIR, self._layout_name)
+        return os.path.join(layouts_dir(self._user), self._layout_name)
     
     @property
     def seed_nr(self):
@@ -130,7 +135,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
             runtime_minutes=20,
@@ -146,7 +150,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=True,
             run_waypoints_in_order=False,
             runtime_minutes=15,
@@ -162,7 +165,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/test_reach/test_reach.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
             start_delay_seconds_override=5,
@@ -179,7 +181,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=False,
             runtime_minutes=15,
@@ -196,7 +197,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=False,
             runtime_minutes=10080,  # 7 days
@@ -217,7 +217,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name="degeneracy.yaml",
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
             runtime_minutes=1,
@@ -233,7 +232,6 @@ def get_all_setups(user: str = None):
             map_usd_path=f"/home/{user}/isaac_sim_files/maps/warehouse/01.usd",
             seed_nr=1,
             robot_prim_name=mir_bot,
-            layout_name=DEFAULT_LAYOUT_NAME,
             only_plan_anchor_waypoints=False,
             run_waypoints_in_order=True,
             runtime_minutes=10,

@@ -202,7 +202,7 @@ class SegMap(BaseSample):
 
         self.manual_control = False
         self._selected_setup_name = "test_degeneracy" # "paper_test_1" 
-        self._load_setup_from_yaml()
+        self._load_setup()
 
         self._previous_speed = 0.0
         self._previous_angular_velocity_ = 0.0
@@ -237,14 +237,18 @@ class SegMap(BaseSample):
         self._teleop_sub = ros2_utils.TeleopCommandSubscriber('/cmd_vel')
         self._teleop_warned_unavailable = False
 
-    def _load_setup_from_yaml(self):
-        """Load the selected setup and apply start position/seed from YAML."""
-        start_position, seed_nr = robot_utils.read_start_info_from_yaml()
+    def _load_setup(self):
+        """Load the selected setup and apply start pose and layout from system_launch.py."""
+        start_position, layout_name = robot_utils.read_system_launch_config()
         self.Setup = get_setup_from_name(self._selected_setup_name)
         if self.Setup is None:
             raise ValueError(f"{self._selected_setup_name} not found in setups")
         self.Setup._start_position = start_position
-        self.Setup._seed_nr = seed_nr
+        self.Setup._layout_name = layout_name
+        print(
+            f"Launch config: layout={layout_name}, "
+            f"start=({start_position[0]}, {start_position[1]}, yaw={start_position[2]} deg)"
+        )
 
     def _publish_storage_utilization(self):
         """Publish storage utilization (occupied bins / total bins)."""
@@ -563,7 +567,7 @@ class SegMap(BaseSample):
         self._spawn_layout_bins()
         self._robot = None
 
-        self._load_setup_from_yaml()
+        self._load_setup()
         self._setup_missions_and_robot_position()
 
     def _maybe_print_plan_start(self, mission):
@@ -920,7 +924,7 @@ class SegMap(BaseSample):
     async def setup_post_reset(self):
         self._robot = None
 
-        self._load_setup_from_yaml()
+        self._load_setup()
 
         self._setup_missions_and_robot_position()
         app_utils.stop()

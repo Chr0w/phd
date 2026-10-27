@@ -1,3 +1,4 @@
+import ast
 import glob
 import heapq
 import math
@@ -59,47 +60,59 @@ def get_start_yaw_degrees(start_position):
     return 0.0
 
 
-def read_start_info_from_yaml(yaml_path=None):
-    """
-    Read start position and seed from YAML file.
-    This function reads the file fresh each time it's called.
-    
-    Args:
-        yaml_path: Path to the YAML file containing start position (defaults to /home/{USER}/devcontainer/ros2_ws/shared_files/start_pos.yaml)
-    
-    Returns:
-        tuple: (start_position, seed_nr) where start_position is [x, y] or [x, y, yaw_degrees] and seed_nr is int
-    """
-    if yaml_path is None:
-        user = os.environ.get("USER")
-        yaml_path = f"/home/{user}/devcontainer/ros2_ws/shared_files/start_pos.yaml"
-    if yaml is None:
-        raise ImportError("yaml module is required to read start position. Install it with: pip install pyyaml")
-    try:
-        with open(yaml_path, "r") as f:
-            start_pos_data = yaml.safe_load(f)
-            if start_pos_data and "robot_start_x" in start_pos_data and "robot_start_y" in start_pos_data:
-                x = float(start_pos_data["robot_start_x"])
-                y = float(start_pos_data["robot_start_y"])
-                start_position = [x, y]
-                if "robot_start_yaw" in start_pos_data:
-                    start_position.append(float(start_pos_data["robot_start_yaw"]))
+_SYSTEM_LAUNCH_FIELDS = (
+    "ROBOT_START_X",
+    "ROBOT_START_Y",
+    "ROBOT_START_YAW_DEG",
+    "USED_LAYOUT",
+)
 
-                # Read seed
-                if "seed" in start_pos_data:
-                    seed_nr = int(start_pos_data["seed"])
-                else:
-                    raise ValueError(f"start_pos.yaml must contain 'seed' field. Got: {start_pos_data}")
-                
-                return start_position, seed_nr
-            else:
-                raise ValueError(f"start_pos.yaml must contain 'robot_start_x' and 'robot_start_y' fields. Got: {start_pos_data}")
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Start position file not found: {yaml_path}") from e
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise RuntimeError(f"Failed to read start position from {yaml_path}: {e}") from e
+
+def system_launch_path(user: str | None = None) -> str:
+    if not user:
+        user = os.environ.get("USER", "unknown")
+    return f"/home/{user}/devcontainer/ros2_ws/system_launch.py"
+
+
+def read_system_launch_config(launch_path: str | None = None) -> tuple[list[float], str]:
+    """Read the robot start pose and layout filename from system_launch.py.
+
+    The launch file imports ROS, so the assignments are parsed instead of executed.
+    Later assignments of the same name win.
+
+    Returns:
+        tuple: ([x, y, yaw_degrees], layout filename)
+    """
+    if launch_path is None:
+        launch_path = system_launch_path()
+    try:
+        with open(launch_path, "r", encoding="utf-8") as handle:
+            tree = ast.parse(handle.read(), filename=launch_path)
+    except FileNotFoundError as error:
+        raise FileNotFoundError(f"system_launch.py not found: {launch_path}") from error
+
+    values: dict[str, object] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name) or target.id not in _SYSTEM_LAUNCH_FIELDS:
+            continue
+        try:
+            values[target.id] = ast.literal_eval(node.value)
+        except (ValueError, SyntaxError):
+            continue
+
+    missing = [name for name in _SYSTEM_LAUNCH_FIELDS if name not in values]
+    if missing:
+        raise ValueError(f"{launch_path} is missing literal assignments for {', '.join(missing)}")
+
+    start_position = [
+        float(values["ROBOT_START_X"]),
+        float(values["ROBOT_START_Y"]),
+        float(values["ROBOT_START_YAW_DEG"]),
+    ]
+    return start_position, str(values["USED_LAYOUT"])
 
 
 def _waypoint_id_sort_key(waypoint_id: str) -> int:
