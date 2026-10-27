@@ -201,7 +201,6 @@ class SegMap(BaseSample):
 
 
         self.manual_control = False
-        self._selected_setup_name = "test_degeneracy" # "paper_test_1" 
         self._load_setup()
 
         self._previous_speed = 0.0
@@ -238,15 +237,16 @@ class SegMap(BaseSample):
         self._teleop_warned_unavailable = False
 
     def _load_setup(self):
-        """Load the selected setup and apply start pose and layout from system_launch.py."""
-        start_position, layout_name = robot_utils.read_system_launch_config()
+        """Load the setup named by SETUP in system_launch.py, plus its start pose and layout."""
+        start_position, layout_name, setup_name = robot_utils.read_system_launch_config()
+        self._selected_setup_name = setup_name
         self.Setup = get_setup_from_name(self._selected_setup_name)
         if self.Setup is None:
             raise ValueError(f"{self._selected_setup_name} not found in setups")
         self.Setup._start_position = start_position
         self.Setup._layout_name = layout_name
         print(
-            f"Launch config: layout={layout_name}, "
+            f"Launch config: setup={setup_name}, layout={layout_name}, "
             f"start=({start_position[0]}, {start_position[1]}, yaw={start_position[2]} deg)"
         )
 

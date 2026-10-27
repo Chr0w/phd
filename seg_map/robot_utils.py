@@ -64,8 +64,32 @@ _SYSTEM_LAUNCH_FIELDS = (
     "ROBOT_START_X",
     "ROBOT_START_Y",
     "ROBOT_START_YAW_DEG",
+    "SETUP",
     "USED_LAYOUT",
 )
+
+
+def _eval_launch_assignment(node: ast.AST, values: dict[str, object]):
+    """Evaluate a module-level literal, or an f-string of already assigned names."""
+    try:
+        return ast.literal_eval(node)
+    except (ValueError, SyntaxError):
+        pass
+    if not isinstance(node, ast.JoinedStr):
+        return None
+    parts: list[str] = []
+    for part in node.values:
+        if isinstance(part, ast.Constant) and isinstance(part.value, str):
+            parts.append(part.value)
+            continue
+        if isinstance(part, ast.FormattedValue) and isinstance(part.value, ast.Name):
+            name = part.value.id
+            if name not in values:
+                return None
+            parts.append(str(values[name]))
+            continue
+        return None
+    return "".join(parts)
 
 
 def system_launch_path(user: str | None = None) -> str:
@@ -74,14 +98,15 @@ def system_launch_path(user: str | None = None) -> str:
     return f"/home/{user}/devcontainer/ros2_ws/system_launch.py"
 
 
-def read_system_launch_config(launch_path: str | None = None) -> tuple[list[float], str]:
-    """Read the robot start pose and layout filename from system_launch.py.
+def read_system_launch_config(launch_path: str | None = None) -> tuple[list[float], str, str]:
+    """Read the robot start pose, layout filename, and setup name from system_launch.py.
 
     The launch file imports ROS, so the assignments are parsed instead of executed.
-    Later assignments of the same name win.
+    Later assignments of the same name win. F-strings may reference earlier assignments,
+    such as USED_LAYOUT = f'{SETUP}.yaml'.
 
     Returns:
-        tuple: ([x, y, yaw_degrees], layout filename)
+        tuple: ([x, y, yaw_degrees], layout filename, setup name)
     """
     if launch_path is None:
         launch_path = system_launch_path()
@@ -98,21 +123,21 @@ def read_system_launch_config(launch_path: str | None = None) -> tuple[list[floa
         target = node.targets[0]
         if not isinstance(target, ast.Name) or target.id not in _SYSTEM_LAUNCH_FIELDS:
             continue
-        try:
-            values[target.id] = ast.literal_eval(node.value)
-        except (ValueError, SyntaxError):
+        value = _eval_launch_assignment(node.value, values)
+        if value is None:
             continue
+        values[target.id] = value
 
     missing = [name for name in _SYSTEM_LAUNCH_FIELDS if name not in values]
     if missing:
-        raise ValueError(f"{launch_path} is missing literal assignments for {', '.join(missing)}")
+        raise ValueError(f"{launch_path} is missing assignments for {', '.join(missing)}")
 
     start_position = [
         float(values["ROBOT_START_X"]),
         float(values["ROBOT_START_Y"]),
         float(values["ROBOT_START_YAW_DEG"]),
     ]
-    return start_position, str(values["USED_LAYOUT"])
+    return start_position, str(values["USED_LAYOUT"]), str(values["SETUP"])
 
 
 def _waypoint_id_sort_key(waypoint_id: str) -> int:
